@@ -1,6 +1,7 @@
 """Build the documented ISS zero-g R2 derivative from the untouched NASA URDF."""
 
 import hashlib
+import argparse
 import json
 import math
 from pathlib import Path
@@ -16,6 +17,8 @@ PACKAGE = SOURCE.parents[1]
 KEYS = ("ixx", "ixy", "ixz", "iyy", "iyz", "izz")
 SUPPORT_LINK = "r2/objects/argos_support/argos_support_link"
 SUPPORT_JOINT = "r2/objects/argos_support/argos_support_joint"
+WORLD_LINK = "r2/world_ref"
+WORLD_JOINT = "r2/fixed/world_ref/robot_world"
 
 
 def stl_vertices(path):
@@ -94,6 +97,12 @@ def mesh_bbox(link):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--remove-world-ref", action="store_true",
+                        help="also remove massless world_ref and its fixed joint; emit a separate floating-root derivative")
+    args = parser.parse_args()
+    dest = (DEST.with_name("r2c6_zero_g_noworldref.urdf") if args.remove_world_ref else DEST)
+    changes = dest.with_name("changes_noworldref.json" if args.remove_world_ref else "changes.json")
     tree = ET.parse(SOURCE)
     robot = tree.getroot()
     removed = []
@@ -107,6 +116,20 @@ def main():
             raise ValueError("ARGOS support is not a leaf")
         robot.remove(node)
         removed.append({"type": tag, "name": name})
+    if args.remove_world_ref:
+        joint = next((x for x in robot.findall("joint") if x.get("name") == WORLD_JOINT), None)
+        link = next((x for x in robot.findall("link") if x.get("name") == WORLD_LINK), None)
+        if (joint is None or link is None or joint.get("type") != "fixed"
+                or joint.find("parent").get("link") != WORLD_LINK
+                or joint.find("child").get("link") != "r2/robot_world"
+                or link.find("inertial") is not None
+                or any(j is not joint and j.find("parent") is not None
+                       and j.find("parent").get("link") == WORLD_LINK for j in robot.findall("joint"))):
+            raise ValueError("world_ref structure changed; inspect source before removing")
+        robot.remove(joint)
+        robot.remove(link)
+        removed.extend(({"type": "joint", "name": WORLD_JOINT},
+                        {"type": "link", "name": WORLD_LINK}))
     edits = []
     for link in robot.findall("link"):
         inertial = link.find("inertial")
@@ -136,18 +159,19 @@ def main():
         edits.append({"link": link.get("name"), "mass_kg": mass, "old_k_m": k,
                       "old_tensor_kg_m2": old, "new_tensor_kg_m2": new,
                       "method": method, "bbox": bbox})
-    DEST.parent.mkdir(parents=True, exist_ok=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     ET.indent(tree, space="  ")
-    tree.write(DEST, encoding="utf-8", xml_declaration=True)
+    tree.write(dest, encoding="utf-8", xml_declaration=True)
     result = {"source": str(SOURCE.relative_to(ROOT)).replace("\\", "/"),
               "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
-              "derivative": str(DEST.relative_to(ROOT)).replace("\\", "/"),
+              "derivative": str(dest.relative_to(ROOT)).replace("\\", "/"),
               "date": "2026-09-30", "removed": removed, "inertia_changes": edits,
+              "remove_world_ref": args.remove_world_ref,
               "inertia_change_count": len(edits),
               "fallback_sphere_count": sum(x["method"] == "fallback_sphere" for x in edits)}
-    CHANGES.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    changes.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"Removed {len(removed)} ARGOS elements; changed {len(edits)} inertias; fallback spheres {result['fallback_sphere_count']}")
-    print(f"URDF: {DEST}\nChanges: {CHANGES}")
+    print(f"URDF: {dest}\nChanges: {changes}")
 
 
 if __name__ == "__main__":

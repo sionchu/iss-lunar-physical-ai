@@ -1,5 +1,6 @@
 """Headless Isaac Sim zero-g whole-body momentum gate for the R2 derivative."""
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -8,6 +9,7 @@ import traceback
 
 import numpy as np
 from isaacsim import SimulationApp
+from momentum_measure import measure
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,42 +20,17 @@ LOG = ROOT / "outputs/iss_v0_momentum.log"
 CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
-def rotation(q):
-    w, x, y, z = q
-    return np.array([[1 - 2 * (y*y + z*z), 2 * (x*y - z*w), 2 * (x*z + y*w)],
-                     [2 * (x*y + z*w), 1 - 2 * (x*x + z*z), 2 * (y*z - x*w)],
-                     [2 * (x*z - y*w), 2 * (y*z + x*w), 1 - 2 * (x*x + y*y)]])
-
-
-def measure(bodies, masses, inertias, coms, com_quats, names):
-    poses, quats = (x.numpy().astype(np.float64) for x in bodies.get_world_poses())
-    linear, angular = (x.numpy().astype(np.float64) for x in bodies.get_velocities())
-    positions = []
-    velocities = []
-    spins = []
-    for i in range(len(masses)):
-        rb = rotation(quats[i])
-        offset = rb @ coms[i]
-        positions.append(poses[i] + offset)
-        velocities.append(linear[i] + np.cross(angular[i], offset))
-        ri = rb @ rotation(com_quats[i])
-        spins.append(ri @ inertias[i] @ ri.T @ angular[i])
-    positions = np.asarray(positions)
-    velocities = np.asarray(velocities)
-    center = np.sum(masses[:, None] * positions, axis=0) / masses.sum()
-    terms_p = masses[:, None] * velocities
-    terms_l = np.cross(positions - center, terms_p) + spins
-    return {"P": terms_p.sum(axis=0), "L": terms_l.sum(axis=0),
-            "Pref": float(np.linalg.norm(terms_p, axis=1).sum()),
-            "Lref": float(np.linalg.norm(terms_l, axis=1).sum()),
-            "largest_P_link": names[int(np.argmax(np.linalg.norm(terms_p, axis=1)))],
-            "largest_L_link": names[int(np.argmax(np.linalg.norm(terms_l, axis=1)))]}
-
-
 def main():
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    result = {"config": str(CONFIG_PATH), "urdf": str(URDF), "test_a": {"status": "NOT_RUN"},
-              "test_b": {"status": "NOT_RUN"}, "inertia_frame": "link body frame about link COM, rotated by link and COM orientations",
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--urdf", type=Path, default=URDF)
+    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--test-a-only", action="store_true")
+    args = parser.parse_args()
+    urdf = args.urdf.resolve()
+    out = args.out.resolve()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    result = {"config": str(CONFIG_PATH), "urdf": str(urdf), "test_a": {"status": "NOT_RUN"},
+              "test_b": {"status": "NOT_RUN"}, "inertia_frame": "PhysX tensor inertia in link body frame about COM; rotated by link orientation only",
               "error": None}
     app = None
     try:
@@ -70,8 +47,8 @@ def main():
         manager.set_extension_enabled_immediate("omni.scene.optimizer.core", True)
         manager.set_extension_enabled_immediate("isaacsim.robot.schema", True)
         cfg = URDFImporterConfig()
-        cfg.urdf_path = str(URDF)
-        cfg.usd_path = str(ROOT / "outputs/r2_derived/isaac_import")
+        cfg.urdf_path = str(urdf)
+        cfg.usd_path = str(out.with_suffix("")) + "_import"
         cfg.ros_package_paths = [{"name": "r2_description", "path": str(ROOT / "assets/raw/nasa-urdf-robots/r2_description")}]
         cfg.fix_base = CONFIG["physics"]["fix_base"]
         usd_path = URDFImporter(cfg).import_urdf()
@@ -93,6 +70,18 @@ def main():
         physx_scene.set_steps_per_second(round(1.0 / physics["dt_s"]))
         physx_scene.set_solver_type(physics["solver_type"])
         roots = [str(p.GetPath()) for p in stage.Traverse() if p.HasAPI(UsdPhysics.ArticulationRootAPI)]
+        result["articulation_roots"] = roots
+        result["world_joints"] = [{"path": str(p.GetPath()),
+                                    "body0": [str(x) for x in UsdPhysics.Joint(p).GetBody0Rel().GetTargets()],
+                                    "body1": [str(x) for x in UsdPhysics.Joint(p).GetBody1Rel().GetTargets()]}
+                                   for p in stage.Traverse() if p.IsA(UsdPhysics.Joint)
+                                   and (not UsdPhysics.Joint(p).GetBody0Rel().GetTargets()
+                                        or not UsdPhysics.Joint(p).GetBody1Rel().GetTargets())]
+        result["world_ref_prims"] = [{"path": str(p.GetPath()),
+                                       "rigid_body": p.HasAPI(UsdPhysics.RigidBodyAPI),
+                                       "mass": UsdPhysics.MassAPI(p).GetMassAttr().Get(),
+                                       "diagonal_inertia": str(UsdPhysics.MassAPI(p).GetDiagonalInertiaAttr().Get())}
+                                      for p in stage.Traverse() if "world_ref" in p.GetName()]
         if len(roots) != 1:
             raise RuntimeError(f"Expected one articulation root, found {roots}")
         root_api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
@@ -107,11 +96,15 @@ def main():
                 api.CreateAngularDampingAttr(0.0)
                 api.CreateSleepThresholdAttr(0.0)
         timeline = omni.timeline.get_timeline_interface()
-        for key in ("test_a", "test_b"):
+        for key in (("test_a",) if args.test_a_only else ("test_a", "test_b")):
             timeline.stop()
             timeline.play()
             for _ in range(12):
                 app.update()
+            # Initialize the articulation with one explicit physics step before
+            # assigning the initial twist. Without this, PhysX clears tensor
+            # velocities on the first measured step (verified by calibration).
+            SimulationManager.step(steps=1)
             art = Articulation(roots[0])
             if not art.is_physics_tensor_entity_valid():
                 raise RuntimeError("Articulation tensor invalid")
@@ -123,9 +116,8 @@ def main():
                 raise RuntimeError("Rigid-body tensor invalid")
             masses = art.get_link_masses().numpy()[0].astype(np.float64)
             inertias = art.get_link_inertias().numpy()[0].reshape(-1, 3, 3).astype(np.float64)
-            com, com_q = art.get_link_coms()
+            com, _ = art.get_link_coms()
             coms = com.numpy()[0].astype(np.float64)
-            com_quats = com_q.numpy()[0].astype(np.float64)
             if len(paths) != len(masses):
                 raise RuntimeError(f"Link path/mass mismatch: {len(paths)} vs {len(masses)}")
             dof_names = list(art.dof_names)
@@ -134,6 +126,14 @@ def main():
             driven = []
             if key == "test_b":
                 driven = [i for i, name in enumerate(dof_names) if any(f"{side}_armjoint{joint}_" in name for side in ("left", "right") for joint in range(4))]
+                if not driven and urdf.name == "g1_29dof.urdf":
+                    expected = [f"{side}_{joint}_joint" for side in ("left", "right")
+                                for joint in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow")]
+                    driven = [dof_names.index(name) for name in expected if name in dof_names]
+                    if len(driven) != len(expected):
+                        result[key] = {"status": "NOT_RUN", "reason": "G1 shoulder/elbow DOF mapping incomplete",
+                                       "matched": [dof_names[i] for i in driven]}
+                        continue
                 if not driven:
                     raise RuntimeError(f"No shoulder/elbow arm DOFs matched: {dof_names}")
                 gains[0, driven] = CONFIG[key]["drive_stiffness"]
@@ -154,7 +154,7 @@ def main():
                 if key == "test_b":
                     targets[0, driven] = CONFIG[key]["amplitude_rad"] * math.sin(2 * math.pi * CONFIG[key]["frequency_hz"] * step * physics["dt_s"])
                     art.set_dof_position_targets(targets)
-                data = measure(bodies, masses, inertias, coms, com_quats, names)
+                data = measure(bodies, masses, inertias, coms, names)
                 observations.append(data)
                 if step < nsteps:
                     SimulationManager.step(steps=1)
@@ -186,11 +186,12 @@ def main():
         result["error"] = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
     finally:
-        OUT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         print("MOMENTUM_RESULT=" + json.dumps(result), flush=True)
         if app is not None:
             app.close()
-    return 0 if all(result[x]["status"] == "PASS" for x in ("test_a", "test_b")) else 1
+    keys = ("test_a",) if args.test_a_only else ("test_a", "test_b")
+    return 0 if all(result[x]["status"] == "PASS" for x in keys) else 1
 
 
 if __name__ == "__main__":

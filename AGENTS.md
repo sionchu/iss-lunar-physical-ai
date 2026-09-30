@@ -15,3 +15,4 @@
 - Large downloaded assets and generated runs stay out of normal Git history unless intentionally managed with Git LFS and provenance metadata.
 - Any meaningful cost, external submission/publication, destructive change, credential use, or broadened access is an approval gate.
 - Before commit: inspect diff, verify links/config syntax, run available checks, and report UNKNOWN items rather than implying validation.
+- Canonical working copy: windows-main `D:\Workspace\06_Research\iss-lunar-physical-ai` (Isaac Sim 6.0.1 runs here). The Mac mini copy is a read-only mirror synced from Windows by git bundle; do not commit on the Mac.

@@ -1,6 +1,7 @@
 """Headless Isaac Sim zero-g whole-body momentum gate for the R2 derivative."""
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -20,28 +21,113 @@ LOG = ROOT / "outputs/iss_v0_momentum.log"
 CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
+def load_fresh_stage(app, usd_path, result):
+    """Open the imported USD from disk and author the gate physics settings.
+
+    Called once per test so that no simulation or authoring state from an
+    earlier test can reach the next one. Unsaved edits on file-backed layers
+    are discarded by reloading them from disk; the reloaded identifiers are
+    recorded so the reset is inspectable.
+    """
+    import omni.timeline
+    import omni.usd
+    from pxr import PhysxSchema, UsdPhysics
+    from isaacsim.core.simulation_manager import PhysxScene
+
+    omni.timeline.get_timeline_interface().stop()
+    context = omni.usd.get_context()
+    if not context.open_stage(str(usd_path)):
+        raise RuntimeError("Could not open imported USD")
+    stage = context.get_stage()
+    dirty = [layer.identifier for layer in stage.GetUsedLayers() if not layer.anonymous and layer.dirty]
+    for layer in stage.GetUsedLayers():
+        if not layer.anonymous and layer.dirty:
+            layer.Reload(force=True)
+    for _ in range(5):
+        app.update()
+    physics = CONFIG["physics"]
+    scene = UsdPhysics.Scene.Define(stage, "/PhysicsScene")
+    scene.CreateGravityDirectionAttr((0.0, 0.0, -1.0))
+    scene.CreateGravityMagnitudeAttr(0.0)
+    stage.SetTimeCodesPerSecond(1.0 / physics["dt_s"])
+    physx_scene = PhysxScene(scene.GetPrim())
+    physx_scene.set_steps_per_second(round(1.0 / physics["dt_s"]))
+    physx_scene.set_solver_type(physics["solver_type"])
+    roots = [str(p.GetPath()) for p in stage.Traverse() if p.HasAPI(UsdPhysics.ArticulationRootAPI)]
+    result["articulation_roots"] = roots
+    result["world_joints"] = [{"path": str(p.GetPath()),
+                                "body0": [str(x) for x in UsdPhysics.Joint(p).GetBody0Rel().GetTargets()],
+                                "body1": [str(x) for x in UsdPhysics.Joint(p).GetBody1Rel().GetTargets()]}
+                               for p in stage.Traverse() if p.IsA(UsdPhysics.Joint)
+                               and (not UsdPhysics.Joint(p).GetBody0Rel().GetTargets()
+                                    or not UsdPhysics.Joint(p).GetBody1Rel().GetTargets())]
+    result["world_ref_prims"] = [{"path": str(p.GetPath()),
+                                   "rigid_body": p.HasAPI(UsdPhysics.RigidBodyAPI),
+                                   "mass": UsdPhysics.MassAPI(p).GetMassAttr().Get(),
+                                   "diagonal_inertia": str(UsdPhysics.MassAPI(p).GetDiagonalInertiaAttr().Get())}
+                                  for p in stage.Traverse() if "world_ref" in p.GetName()]
+    if len(roots) != 1:
+        raise RuntimeError(f"Expected one articulation root, found {roots}")
+    root_api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
+    root_api.CreateSolverPositionIterationCountAttr(physics["position_iterations"])
+    root_api.CreateSolverVelocityIterationCountAttr(physics["velocity_iterations"])
+    root_api.CreateEnabledSelfCollisionsAttr(False)
+    root_api.CreateSleepThresholdAttr(0.0)
+    for prim in stage.Traverse():
+        if prim.HasAPI(UsdPhysics.RigidBodyAPI):
+            api = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
+            api.CreateLinearDampingAttr(0.0)
+            api.CreateAngularDampingAttr(0.0)
+            api.CreateSleepThresholdAttr(0.0)
+    return roots[0], dirty
+
+
+def initial_state(art, bodies):
+    """Read back the articulation state before test initial conditions are applied."""
+    arrays = {"dof_positions": art.get_dof_positions().numpy()[0],
+              "dof_velocities": art.get_dof_velocities().numpy()[0]}
+    arrays["link_positions"], arrays["link_orientations"] = (x.numpy() for x in bodies.get_world_poses())
+    arrays["link_linear_velocities"], arrays["link_angular_velocities"] = (x.numpy() for x in bodies.get_velocities())
+    digest = hashlib.sha256()
+    for name, value in arrays.items():
+        digest.update(name.encode())
+        digest.update(np.ascontiguousarray(value, dtype=np.float32).tobytes())
+    return {"sha256_float32": digest.hexdigest(),
+            "dof_positions": arrays["dof_positions"].tolist(),
+            "dof_velocities": arrays["dof_velocities"].tolist(),
+            "max_abs_dof_position": float(np.abs(arrays["dof_positions"]).max()),
+            "max_abs_dof_velocity": float(np.abs(arrays["dof_velocities"]).max()),
+            "max_abs_link_linear_velocity": float(np.abs(arrays["link_linear_velocities"]).max()),
+            "max_abs_link_angular_velocity": float(np.abs(arrays["link_angular_velocities"]).max()),
+            "root_position": arrays["link_positions"][0].tolist(),
+            "root_orientation_wxyz": arrays["link_orientations"][0].tolist()}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--urdf", type=Path, default=URDF)
     parser.add_argument("--out", type=Path, default=OUT)
-    parser.add_argument("--test-a-only", action="store_true")
+    only = parser.add_mutually_exclusive_group()
+    only.add_argument("--test-a-only", action="store_true")
+    only.add_argument("--test-b-only", action="store_true")
     args = parser.parse_args()
+    keys = ("test_a",) if args.test_a_only else ("test_b",) if args.test_b_only else ("test_a", "test_b")
     urdf = args.urdf.resolve()
     out = args.out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     result = {"config": str(CONFIG_PATH), "urdf": str(urdf), "test_a": {"status": "NOT_RUN"},
               "test_b": {"status": "NOT_RUN"}, "inertia_frame": "PhysX tensor inertia in link body frame about COM; rotated by link orientation only",
-              "error": None}
+              "test_lifecycle": "fresh stage per test: imported USD reopened, dirty file layers reloaded, physics settings re-authored",
+              "tests_run_in_order": list(keys), "error": None}
     app = None
     try:
+        result["urdf_sha256"] = hashlib.sha256(urdf.read_bytes()).hexdigest()
         app = SimulationApp({"headless": True})
         import omni.kit.app
         import omni.timeline
-        import omni.usd
-        from pxr import PhysxSchema, UsdPhysics
         from isaacsim.asset.importer.urdf.impl import URDFImporter, URDFImporterConfig
         from isaacsim.core.experimental.prims import Articulation, RigidPrim
-        from isaacsim.core.simulation_manager import PhysxScene, SimulationManager
+        from isaacsim.core.simulation_manager import SimulationManager
 
         manager = omni.kit.app.get_app().get_extension_manager()
         manager.set_extension_enabled_immediate("omni.scene.optimizer.core", True)
@@ -55,49 +141,10 @@ def main():
         if not usd_path:
             raise RuntimeError("URDF importer returned no USD path")
         result["imported_usd"] = str(usd_path)
-        context = omni.usd.get_context()
-        if not context.open_stage(str(usd_path)):
-            raise RuntimeError("Could not open imported USD")
-        for _ in range(5):
-            app.update()
-        stage = context.get_stage()
         physics = CONFIG["physics"]
-        scene = UsdPhysics.Scene.Define(stage, "/PhysicsScene")
-        scene.CreateGravityDirectionAttr((0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr(0.0)
-        stage.SetTimeCodesPerSecond(1.0 / physics["dt_s"])
-        physx_scene = PhysxScene(scene.GetPrim())
-        physx_scene.set_steps_per_second(round(1.0 / physics["dt_s"]))
-        physx_scene.set_solver_type(physics["solver_type"])
-        roots = [str(p.GetPath()) for p in stage.Traverse() if p.HasAPI(UsdPhysics.ArticulationRootAPI)]
-        result["articulation_roots"] = roots
-        result["world_joints"] = [{"path": str(p.GetPath()),
-                                    "body0": [str(x) for x in UsdPhysics.Joint(p).GetBody0Rel().GetTargets()],
-                                    "body1": [str(x) for x in UsdPhysics.Joint(p).GetBody1Rel().GetTargets()]}
-                                   for p in stage.Traverse() if p.IsA(UsdPhysics.Joint)
-                                   and (not UsdPhysics.Joint(p).GetBody0Rel().GetTargets()
-                                        or not UsdPhysics.Joint(p).GetBody1Rel().GetTargets())]
-        result["world_ref_prims"] = [{"path": str(p.GetPath()),
-                                       "rigid_body": p.HasAPI(UsdPhysics.RigidBodyAPI),
-                                       "mass": UsdPhysics.MassAPI(p).GetMassAttr().Get(),
-                                       "diagonal_inertia": str(UsdPhysics.MassAPI(p).GetDiagonalInertiaAttr().Get())}
-                                      for p in stage.Traverse() if "world_ref" in p.GetName()]
-        if len(roots) != 1:
-            raise RuntimeError(f"Expected one articulation root, found {roots}")
-        root_api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
-        root_api.CreateSolverPositionIterationCountAttr(physics["position_iterations"])
-        root_api.CreateSolverVelocityIterationCountAttr(physics["velocity_iterations"])
-        root_api.CreateEnabledSelfCollisionsAttr(False)
-        root_api.CreateSleepThresholdAttr(0.0)
-        for prim in stage.Traverse():
-            if prim.HasAPI(UsdPhysics.RigidBodyAPI):
-                api = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
-                api.CreateLinearDampingAttr(0.0)
-                api.CreateAngularDampingAttr(0.0)
-                api.CreateSleepThresholdAttr(0.0)
         timeline = omni.timeline.get_timeline_interface()
-        for key in (("test_a",) if args.test_a_only else ("test_a", "test_b")):
-            timeline.stop()
+        for key in keys:
+            root, reloaded = load_fresh_stage(app, usd_path, result)
             timeline.play()
             for _ in range(12):
                 app.update()
@@ -105,7 +152,7 @@ def main():
             # assigning the initial twist. Without this, PhysX clears tensor
             # velocities on the first measured step (verified by calibration).
             SimulationManager.step(steps=1)
-            art = Articulation(roots[0])
+            art = Articulation(root)
             if not art.is_physics_tensor_entity_valid():
                 raise RuntimeError("Articulation tensor invalid")
             art.set_dof_friction_properties(static_frictions=0.0, dynamic_frictions=0.0, viscous_frictions=0.0)
@@ -114,6 +161,8 @@ def main():
             bodies = RigidPrim(paths)
             if not bodies.is_physics_tensor_entity_valid():
                 raise RuntimeError("Rigid-body tensor invalid")
+            state = initial_state(art, bodies)
+            state["reloaded_dirty_layers"] = reloaded
             masses = art.get_link_masses().numpy()[0].astype(np.float64)
             inertias = art.get_link_inertias().numpy()[0].reshape(-1, 3, 3).astype(np.float64)
             com, _ = art.get_link_coms()
@@ -179,7 +228,8 @@ def main():
                            "initial_P": p[0].tolist(), "initial_L": l[0].tolist(),
                            "final_P": p[-1].tolist(), "final_L": l[-1].tolist(),
                            "largest_link_at_worst_L": observations[worst]["largest_L_link"],
-                           "driven_dofs": [dof_names[i] for i in driven]}
+                           "driven_dofs": [dof_names[i] for i in driven],
+                           "dof_names": dof_names, "initial_state": state}
             print(f"{key}: {result[key]}", flush=True)
         timeline.stop()
     except Exception as exc:
@@ -190,7 +240,6 @@ def main():
         print("MOMENTUM_RESULT=" + json.dumps(result), flush=True)
         if app is not None:
             app.close()
-    keys = ("test_a",) if args.test_a_only else ("test_a", "test_b")
     return 0 if all(result[x]["status"] == "PASS" for x in keys) else 1
 
 

@@ -32,26 +32,42 @@ The structured result is `outputs/iss_v0_momentum_result.json`; the complete run
 
 ## UNKNOWN
 
-- Whether the importer anchored `world_ref` or introduced another external constraint.
-- Whether Isaac's link velocity and COM/inertia tensor frame conventions exactly match this calculation; an independent calibration case has not been run.
-- Source mass, COM, inertia and collision fidelity, including the 11 sphere fallbacks and the existing neck tensor flag.
-- Upstream R2 file-level NASA-1.3 license confirmation and suitability of G1 as a fallback physics asset.
+- The precise physical/numerical cause of the reset-safe R2 Test B linear and angular residuals.
+- The precise cause of G1's reset-safe Test B angular residual (0.01134361), which is above the unchanged 0.01 limit.
+- Source mass, COM, inertia and collision fidelity for the R2 derivative, including the 11 sphere fallbacks and the existing neck tensor flag.
+- Physical fidelity of the local G1 URDF inertias/collisions for this zero-g use case; seven links have missing or identity-style inertias.
+- Upstream R2 file-level NASA-1.3 license confirmation.
+- Robustness across alternative internal motions, durations and repeated stochastic/nondeterministic runs; the reset check below proves sequence independence for this deterministic harness, not general model validity.
 
-## Harness validation — 2026-09-30
+## Harness validation and reset-safe rerun — 2026-09-30 / 2026-10-04
 
-This section supersedes the momentum *measurements* above; it does not alter `configs/iss_v0_momentum.json` or erase the original failed run. The same 10 s, 240 Hz, zero-g settings and predeclared limits were used throughout. A ratios are maximum deviation divided by initial total momentum (limits: P ≤ 0.001, L ≤ 0.01). B ratios are maximum total momentum divided by `Pref` and `Lref` (same limits). Structured results and full Isaac logs are under ignored `outputs/`.
+This section supersedes the momentum *measurements* above; it does not alter `configs/iss_v0_momentum.json` or erase the historical runs. The same 10 s, 240 Hz, zero-g settings and predeclared limits were used throughout. A ratios are maximum deviation divided by initial total momentum (limits: P ≤ 0.001, L ≤ 0.01). B ratios are maximum total momentum divided by `Pref` and `Lref` (same limits).
 
-| Body / derivative | Test A P ratio | Test A L ratio | A | Test B P ratio | Test B L ratio | B |
+A later diagnosis found that the old A→B harness did not restore joint positions before B. The old R2 B ratio 0.013671 and old G1 B ratio 0.005641 were therefore sequence-dependent and are **not valid current gate measurements**. On 2026-10-04 the harness was changed so every test reopens the imported USD and starts from the same fresh articulation state. The official config, tolerances, assets, inertias, gains and armatures were unchanged.
+
+| Body / derivative | Test A P ratio | Test A L ratio | A | Reset-safe Test B P ratio | Reset-safe Test B L ratio | B |
 | --- | ---: | ---: | --- | ---: | ---: | --- |
 | Calibration free box | 0 | 0.000819 | **PASS** | — | — | **NOT_RUN**: no internal joint |
 | Calibration free two-link | 0.00000422 | 0.001562 | **PASS** | — | — | **NOT_RUN**: zero-drive calibration only |
-| R2, `world_ref` kept | 0.0000670 | 0.002326 | **PASS** | 0.0000414 | 0.013671 | **FAIL**: angular |
-| R2, `world_ref` removed | 0.0000670 | 0.002326 | **PASS** | 0.0000414 | 0.013671 | **FAIL**: angular |
-| Unitree G1 29-DOF | 0.0000746 | 0.004488 | **PASS** | 0.00000547 | 0.005641 | **PASS** |
+| R2, `world_ref` kept | 0.0000670 | 0.002326 | **PASS** | **0.00208584** | **0.02823994** | **FAIL**: linear + angular |
+| Unitree G1 29-DOF | 0.0000746 | 0.004488 | **PASS** | 0.000004662 | **0.01134361** | **FAIL**: angular |
+
+The earlier `world_ref`-removed R2 comparison remains useful only for the anchor diagnosis: under the old sequence-dependent harness it matched the kept-`world_ref` result exactly. It was not rerun as a reset-safe candidate because that comparison had already ruled out the suspected world anchor and does not change the current asset-validation gate.
+
+### Reset isolation evidence
+
+For each robot, the A→B run and a separate `--test-b-only` run produced exactly the same B initial-state SHA-256, identical DOF positions (maximum difference 0), and identical P/L error ratios (difference 0 in the serialized results). Within each A→B run, A and B also start from the same recorded fresh-state hash before test-specific initial conditions are applied.
+
+- R2 fresh-state hash: `7d94109cf49e3ef1f63c310eb28a9b7cadfada6586a2716f82010cb5e61a0805`
+- G1 fresh-state hash: `005db1566d15bc1c8de39d9feebf71d7a6894a2919cad0c324f08315e1e60c95`
+- R2 URDF SHA-256: `282152eee0c5fbf514f3cdf74b8ce842f659f32c634c7b9c147a7c0972a97d8f`
+- G1 URDF SHA-256: `e1dc89366bf96aa33ba4ef211884f6d81320ddd2ac6f8b1ad82986e64008be31`
+
+Reset-safe evidence is under ignored `outputs/reset/`: `r2_ab.json`, `r2_b.json`, `g1_ab.json`, `g1_b.json`, and their logs. The harness now records the complete pre-condition DOF position/velocity vectors plus a float32 state digest.
 
 The calibration used a 2 kg free box (0.4 × 0.2 × 0.1 m), an authored COM offset of (0.05, 0.02, 0) m and a principal-axis rotation of 45° about X, plus two such boxes joined by a free, zero-drive Z revolute joint. Both received the Test A initial base twist. For the box, measured initial `P=(0.1000000015, 0, 0)` kg·m/s matches the 0.1 kg·m/s known answer; its initial `L=(0, -0.0002500, 0.0030833)` kg·m²/s. The two-link initial `P=(0.200000003, 0.03199999, 0)` includes transverse motion from the joint geometry. Both conserve P and L within the fixed limits over 2,400 steps. Their evidence is `outputs/iss_v0_calibration_result.json` and `outputs/iss_v0_calibration_final_result.log`.
 
-Three harness faults caused misleading original results. First, a tensor-set articulation twist was cleared on the first explicit `SimulationManager.step`; a one-step warmup **before** setting initial conditions fixes this, as seen in the two-link first-step probe. Second, `RigidPrim.get_velocities()` already returns COM linear velocity, so adding `ω × COM offset` double-counted transport. Third, the tensor inertia already includes principal-axis orientation in the link body frame; rotating it by the COM quaternion a second time produced false angular drift. The shared `scripts/momentum_measure.py` now uses COM velocity directly and rotates tensor inertia by link world orientation only. The offset-COM and rotated-axis calibration isolated these frame bugs before the final robot reruns. Previous ratios above are historical, not validated gate measurements.
+Three earlier harness faults caused misleading original results. First, a tensor-set articulation twist was cleared on the first explicit `SimulationManager.step`; a one-step warmup **before** setting initial conditions fixes this, as seen in the two-link first-step probe. Second, `RigidPrim.get_velocities()` already returns COM linear velocity, so adding `ω × COM offset` double-counted transport. Third, the tensor inertia already includes principal-axis orientation in the link body frame; rotating it by the COM quaternion a second time produced false angular drift. The shared `scripts/momentum_measure.py` now uses COM velocity directly and rotates tensor inertia by link world orientation only. The offset-COM and rotated-axis calibration isolated these frame bugs. A fourth fault remained in test lifecycle: B inherited A's final joint positions. The 2026-10-04 fresh-stage reset removes that dependency and is the current gate basis; earlier B ratios are historical.
 
 ### Anchor diagnosis and independent control
 
@@ -59,6 +75,6 @@ The original URDF has inertial-free `r2/world_ref` joined to `r2/robot_world` by
 
 The G1 control used the locally present official [`unitreerobotics/unitree_ros`](https://github.com/unitreerobotics/unitree_ros) checkout at commit `ccfc6fd8430a17ba3dacef9a1e2faf64ff3b0aee`, file `robots/g1_description/g1_29dof.urdf`, SHA-256 `e1dc89366bf96aa33ba4ef211884f6d81320ddd2ac6f8b1ad82986e64008be31`. The checkout declares BSD-3-Clause. Its URDF has 40 links, 39 joints and 35.115142 kg authored mass; seven links have missing or identity-style inertias. Numeric URDF dimensions are interpreted as metres, masses as kg, and the imported USD is Z-up. It uses authored mesh and primitive collision geometry with self-collision disabled for this gate; source CAD accuracy, collision fidelity, COM/inertia measurements and actual contact behavior remain UNKNOWN. The pelvis articulation root has no world-side joint. Test B mapped each side's `shoulder_pitch`, `shoulder_roll`, `shoulder_yaw` and `elbow` joint to the same four-joints-per-arm command and config gains; all eight names matched. No new raw asset was downloaded or added to Git.
 
-**Conclusion:** the original near-100% Test A loss was a harness initialization fault, with two additional tensor-frame calculation faults. After correction, both calibration bodies and G1 pass A; G1 also passes B. R2 passes A but exceeds B's angular limit by 0.003671, unchanged by `world_ref` removal. The remaining R2 B failure is specific to its imported model or its actuation/solver interaction under this test; its precise cause is UNKNOWN. R2 is not accepted for the ISS v0 momentum gate. Do not tune thresholds or call either R2 derivative a validated physics asset on this evidence.
+**Conclusion:** the original near-100% Test A loss was a harness initialization fault, with two additional tensor-frame calculation faults. A fourth harness defect then remained: Test B inherited Test A's final joint positions. After making every test start from a freshly reopened articulation state, both calibration bodies, R2 and G1 pass Test A, but **neither candidate passes Test B**. R2 fails both B limits (P 0.00208584, L 0.02823994); G1 passes B linear momentum but misses the angular limit narrowly (L 0.01134361 vs 0.01). The exact residual causes are UNKNOWN. Neither R2 nor G1 is accepted as the canonical ISS v0 physics asset by this gate. Do not relax thresholds or carry V9's unsupported armature into the official config to manufacture a PASS.
 
-Reproduce with `python scripts/make_r2_zero_g_derivative.py`, `python scripts/make_r2_zero_g_derivative.py --remove-world-ref`, then `C:\isaacsim\python.bat scripts/iss_v0_calibration.py` and `C:\isaacsim\python.bat scripts/iss_v0_momentum_test.py --urdf <URDF> --out <result JSON>` for each robot. G1 resolves from the local Unitree checkout above. The final robot JSON/log pairs are `iss_v0_momentum_kept_result.json` / `iss_v0_momentum_kept_final2.log`, `iss_v0_momentum_noworldref_result.json` / `iss_v0_momentum_noworldref_final2.log`, and `iss_v0_momentum_g1_result.json` / `iss_v0_momentum_g1_final2.log` under `outputs/`. Runtime wrapper exit codes and JSON verdicts were recorded separately; the R2 runs return a failing gate verdict.
+Reproduce the current gate with `C:\isaacsim\python.bat scripts/iss_v0_calibration.py`, then run `C:\isaacsim\python.bat scripts/iss_v0_momentum_test.py --urdf <URDF> --out <AB.json>` and `C:\isaacsim\python.bat scripts/iss_v0_momentum_test.py --urdf <URDF> --test-b-only --out <B.json>`. Compare the two B `initial_state.sha256_float32` values, DOF positions and error ratios before accepting sequence independence. R2 uses `outputs/r2_derived/r2c6_zero_g.urdf`; G1 resolves from the local Unitree checkout above. The 2026-10-04 reset-safe records are `outputs/reset/r2_ab.json`, `r2_b.json`, `g1_ab.json`, and `g1_b.json`. The Isaac wrapper may return exit code 0 even when the JSON gate verdict is FAIL; the structured JSON verdict is authoritative.

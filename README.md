@@ -56,6 +56,6 @@ Isaac Sim handles rigid-body, articulation, contact, sensor, and learning-orient
 
 ## Current state
 
-This repository currently contains only the research definition and evidence baseline. No simulator version, robot model, ISS module, lunar site, or controller is canonical yet.
+This repository now contains the research baseline plus a reset-safe ISS zero-g momentum harness and asset diagnostics. Isaac Sim 6.0.1 is the current Windows runtime, but no humanoid model, ISS scene, lunar site, or task controller has passed all gates to become canonical yet.
 
-See [docs/RESEARCH_BASELINE.md](docs/RESEARCH_BASELINE.md) for selected sources and the first acceptance gates.
+See [docs/RESEARCH_BASELINE.md](docs/RESEARCH_BASELINE.md) for selected sources and acceptance gates. The canonical visual/scenario plan is [docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md](docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md).

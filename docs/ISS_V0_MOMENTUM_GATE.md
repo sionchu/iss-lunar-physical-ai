@@ -97,3 +97,25 @@ Reproduce the current gate with `C:\isaacsim\python.bat scripts/iss_v0_calibrati
 - Armature lowers R2's linear residual below the limit (0.00209 → ~0.00002) and roughly halves its angular residual (0.0282 → 0.0126–0.0134), but neither run passes. The old V9 PASS came from the sequence-dependent harness and is not reproduced under the reset-safe lifecycle.
 - For G1, vendor armature makes the angular residual worse; armature is not the cause of G1's Test B residual.
 - Root cause of the remaining angular residuals: UNKNOWN. Next diagnostic candidates (not run): timestep / solver-iteration ablation under the reset-safe harness, and an independent check of the angular-momentum measurement on an articulated calibration body.
+
+## v3 reset-safe solver/timestep ablation (2026-10-04, diagnostic)
+
+**Verdict: diagnostic only, no gate verdict changes.** G1's Test B angular residual shrinks as the integration gets finer and passes under every finer-step or more-iteration variant. R2 fails every variant without a convergent trend.
+
+Configs: `configs/diagnostics/v3d_*.json`, each v1 with one physics change (no armature). Test B only, reset-safe harness, thresholds unchanged. Results: `outputs/v3_solver_ablation/` (gitignored). The first `r2_dt960` attempt exited without writing JSON (log stops after "app ready"); the retry completed and is the recorded value.
+
+| Variant (vs v1: dt 1/240, TGS, 16/4 iterations) | G1 B L ratio | G1 | R2 B P ratio | R2 B L ratio | R2 |
+| --- | --- | --- | --- | --- | --- |
+| v1 baseline (reset-safe record) | 0.01134 | FAIL | 0.00209 | 0.02824 | FAIL |
+| dt 1/480 | 0.00899 | PASS | 0.00214 | 0.03077 | FAIL |
+| dt 1/960 | 0.00568 | PASS | 0.00023 | 0.02001 | FAIL |
+| position iterations 64 | 0.00767 | PASS | 0.00053 | 0.01885 | FAIL |
+| velocity iterations 16 | 0.01028 | FAIL | 0.00003 | 0.02689 | FAIL |
+| PGS solver | 0.00703 | PASS | 0.00005 | 0.01913 | FAIL |
+| dt 1/960 + position iterations 64 | 0.00395 | PASS | 0.00063 | 0.01769 | FAIL |
+
+G1 linear ratios stayed ≤ 0.0000122 in every variant.
+
+- **G1:** the residual falls monotonically with timestep (0.01134 → 0.00899 → 0.00568) and with position iterations. This is consistent with solver discretization error rather than a model defect (inference, not proof). The G1 initial-state hash (`005db1566d…`) is identical in every variant: it starts exactly at rest with q = 0.
+- **R2:** no setting brings the angular ratio below 0.0177, and halving dt once makes it worse. Its post-warmup initial state depends on solver settings (a different hash per variant, link speeds ~1e-5 to 5e-4 m/s, several arm DOFs at up to 0.33 rad before Test B starts), while G1's does not. That initial-state sensitivity is a lead for the R2 model or import (e.g. joints starting against limits); it is UNKNOWN whether it causes the residual.
+- **Not done:** no new gate config was adopted. A G1 gate at dt 1/960 would need a versioned config, plus calibration, Test A, A→B and B-only reruns under it, before G1 could be called a zero-g physics candidate.

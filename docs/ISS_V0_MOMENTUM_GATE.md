@@ -1,5 +1,7 @@
 # ISS v0 zero-g momentum gate
 
+> **Current gate: v3 (2026-10-04)**: `configs/iss_v0_momentum_v3.json`, PhysX PGS solver instead of TGS; everything else, including thresholds, is as v1. Under v3, **G1 passes** calibration, Test A, A→B and B-only. **R2 still fails Test B.** See the final section. The v1 sections below are kept as history.
+
 Run date: 2026-09-30. Asset: scripted R2 derivative in `outputs/r2_derived/r2c6_zero_g.urdf`. Config was written before the runtime attempts: `configs/iss_v0_momentum.json`. The gate **FAILS**; R2 is not accepted as the ISS v0 physics model by this experiment.
 
 ## Fixed configuration and measurement
@@ -119,3 +121,40 @@ G1 linear ratios stayed ≤ 0.0000122 in every variant.
 - **G1:** the residual falls monotonically with timestep (0.01134 → 0.00899 → 0.00568) and with position iterations. This is consistent with solver discretization error rather than a model defect (inference, not proof). The G1 initial-state hash (`005db1566d…`) is identical in every variant: it starts exactly at rest with q = 0.
 - **R2:** no setting brings the angular ratio below 0.0177, and halving dt once makes it worse. Its post-warmup initial state depends on solver settings (a different hash per variant, link speeds ~1e-5 to 5e-4 m/s, several arm DOFs at up to 0.33 rad before Test B starts), while G1's does not. That initial-state sensitivity is a lead for the R2 model or import (e.g. joints starting against limits); it is UNKNOWN whether it causes the residual.
 - **Not done:** no new gate config was adopted. A G1 gate at dt 1/960 would need a versioned config, plus calibration, Test A, A→B and B-only reruns under it, before G1 could be called a zero-g physics candidate.
+
+## Gate v3 (2026-10-04): PGS solver, G1 PASS
+
+**Verdict: G1 PASSES the v3 gate (calibration, Test A, Test B, B-only). R2 FAILS v3 Test B.**
+
+`configs/iss_v0_momentum_v3.json` (SHA-256 `ecfba963e577f62a9ab65cff1cd910e320ecdff0ca330978837d33a20ffa8fdc`) = v1 with `physics.solver_type` TGS → **PGS**. Unchanged from v1: dt 1/240, 16/4 iterations, thresholds, Test A/B definitions, zero damping/friction, no armature, and the same assets. `configs/iss_v0_momentum.json` (v1) is kept unchanged. `scripts/iss_v0_momentum_test.py` and `scripts/iss_v0_calibration.py` now default to v3 (`--config` selects another version), and every result records `config_version` and `config_sha256`. Results: `outputs/gate_v3/` (gitignored).
+
+| Run (v3) | Linear ratio | Angular ratio | Verdict |
+| --- | --- | --- | --- |
+| Calibration box (free body) | 0.0 | 0.000111 | PASS |
+| Calibration two-link (free articulation) | 0.0000040 | 0.001382 | PASS |
+| G1 Test A (≤0.001 / ≤0.01) | 0.0000510 | 0.001989 | PASS |
+| G1 Test B (≤0.001 / ≤0.01) | 0.0000036 | 0.007032 | PASS |
+| G1 Test B-only (sequence check) | 0.0000036 | 0.007032 | PASS (identical; initial-state hash `005db1566d15…` same) |
+| R2 Test A | 0.0000864 | 0.002348 | PASS |
+| R2 Test B | 0.0000507 | 0.019131 | FAIL |
+
+**How v3 was chosen (including the rejected draft).**
+1. The first v3 draft was TGS at dt 1/960, chosen because G1 Test B improved with timestep (previous section). Under it, calibration and G1 Test B passed (0.00568), but **G1 Test A failed (angular 0.01819)**. It was rejected; its records are in `outputs/gate_v3_rejected_tgs_dt960/`.
+2. A follow-up Test A ablation for G1 showed that, with TGS, more steps or position iterations degrade free-spin angular momentum:
+
+   | Setting | Test A angular ratio |
+   | --- | --- |
+   | dt 1/240 | 0.00449 |
+   | dt 1/480 | 0.00747 |
+   | dt 1/960 | 0.01819 |
+   | 64 position iterations | 0.01833 |
+   | dt 1/960 + 64 position iterations | 0.22201 |
+   | 16 velocity iterations | 0.00450 |
+   | **PGS** | **0.00199** |
+
+   This is solver behavior observed in this setup. The mechanism is UNKNOWN.
+3. PGS was the only single change that passed both A and B for G1 at dt 1/240. Because it was selected after seeing results, it was checked on a **holdout setting not used for selection** (PGS at dt 1/480): A 0.00204, B 0.00586, both PASS (`outputs/v3_solver_ablation/g1AB_pgs_dt480.json`). Only then was v3 fixed and the full gate re-run.
+
+**What the G1 PASS means, and what it does not.** G1 (Unitree `g1_29dof.urdf`, provenance above) conserves whole-body linear and angular momentum within the fixed tolerances in Isaac Sim 6.0.1 PhysX PGS, for a free spin and for internal arm actuation, with self-collision off and no contacts. It does **not** validate contact/handrail behavior, controllers, self-collision, actual hardware inertias (seven G1 links have missing or identity-style inertias in the URDF), or behavior under TGS or other solver settings.
+
+**R2:** fails Test B under every setting tried (best 0.0177). Its pre-test state is solver-dependent (lead, UNKNOWN cause). R2 remains `KINEMATIC / VISUAL`.

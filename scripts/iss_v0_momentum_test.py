@@ -14,7 +14,7 @@ from momentum_measure import measure
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_PATH = ROOT / "configs/iss_v0_momentum.json"
+CONFIG_PATH = ROOT / "configs/iss_v0_momentum_v3.json"   # current gate (v1 kept as history)
 URDF = ROOT / "outputs/r2_derived/r2c6_zero_g.urdf"
 OUT = ROOT / "outputs/iss_v0_momentum_result.json"
 LOG = ROOT / "outputs/iss_v0_momentum.log"

@@ -10,11 +10,10 @@ The project should look compelling because of physically meaningful geometry, li
 
 Current truth:
 - The reset-safe harness and known-answer calibration are working.
-- R2 Test B fails both linear and angular momentum limits.
-- G1 Test B passes the linear limit but narrowly fails the angular limit.
-- Therefore neither R2 nor G1 is currently a canonical validated zero-g physics actor.
-- R2 may be used now as a clearly labeled visual/kinematic actor.
-- G1 may be used now as a candidate model in separately scoped experiments, but not described as zero-g validated.
+- Gate v3 (2026-10-04, PGS solver, thresholds unchanged; see `docs/ISS_V0_MOMENTUM_GATE.md`): **G1 passes** calibration, Test A and Test B. **R2 fails** Test B.
+- G1 is the zero-g physics candidate: momentum conservation PASS under gate v3 only. Contacts, handrail grasping, controllers and hardware inertias are not validated.
+- R2 remains a clearly labeled visual/kinematic actor (ISS historical context).
+- Under the original v1 gate (TGS) neither passed. Those results are kept as history.
 
 ## Two-track development
 
@@ -102,7 +101,7 @@ Do not build the full ISS or full Moon Base before S3/S6 proves the relevant phy
 1. **0–4 s — Hero:** ISS micro-lab wide shot. Floating R2 silhouette, Earth light through a window/hatch. Small label: `VISUAL / KINEMATIC`.
 2. **4–9 s — Truth layers:** same camera, briefly reveal visual mesh → collision proxy → grasp affordances.
 3. **9–16 s — Validation:** zero-g internal actuation clip with only two overlays: `P` and `L`; show the fixed threshold and actual verdict.
-4. **16–22 s — Engineering honesty:** compact calibration PASS / R2 FAIL / G1 FAIL card. No dramatic red warning screen.
+4. **16–22 s — Engineering honesty:** compact calibration PASS / G1 PASS (gate v3) / R2 FAIL card. No dramatic red warning screen.
 5. **22–29 s — Task future:** handrail transfer path as a thin trajectory arc; label `NEXT GATE`.
 6. **29–37 s — Moon transition:** cut to lunar rigid patch, then South Pole terrain reference with low Sun and long shadows.
 7. **37–45 s — End frame:** split-screen ISS / Lunar with text: `same evidence contract, different gravity regime`.
@@ -128,7 +127,7 @@ The Moon should be a teaser in the first post, not half the first implementation
 
 ### Robots
 - **R2 now:** visual/kinematic storytelling, proportions, grasp pose studies, ISS historical context. Not current physics truth.
-- **G1 now:** independent candidate for controlled experiments and later lunar walking. Its zero-g Test B is still a FAIL.
+- **G1 now:** zero-g physics candidate. It passes gate v3 (momentum conservation, PGS) and is also the later lunar-walking candidate. Contact/handrail behavior is not validated.
 - Before either becomes a validated ISS physics actor: pass reset-safe A/B under fixed thresholds with auditable inertial/collision provenance.
 
 ### Moon
@@ -293,7 +292,8 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 ### Allowed now
 - “Built a reset-safe zero-g momentum validation harness in Isaac Sim.”
 - “Known-answer calibration bodies pass the fixed conservation thresholds.”
-- “R2 and G1 expose remaining model/solver residuals under the current Test B; I am keeping the failures visible rather than tuning the threshold.”
+- “R2 still fails the internal-actuation test; I am keeping that failure visible rather than tuning the threshold.”
+- “G1 conserves whole-body momentum within fixed thresholds in a free-spin and an internal-actuation test (Isaac Sim PhysX, PGS solver, gate v3).” This is momentum conservation only. Do not call it a zero-g-validated humanoid or a validated handrail controller.
 - “Building an OpenUSD ISS-to-lunar research sandbox with separate visual and physics layers.”
 
 ### Allowed after a candidate passes the zero-g gate

@@ -1,0 +1,66 @@
+{
+  "version": "v3",
+  "supersedes": "configs/iss_v0_momentum.json (v1, kept unchanged as history)",
+  "change": "physics.solver_type TGS -> PGS. dt 1/240, 16/4 iterations, thresholds, tests, damping, friction and assets unchanged; no armature.",
+  "rationale": "Reset-safe ablation (docs/ISS_V0_MOMENTUM_GATE.md): with TGS, finer dt or more position iterations improved G1 Test B but degraded the no-actuation Test A (dt 1/960: A L 0.0182 FAIL; dt 1/960 + 64 pos iters: A L 0.222). PGS passed both at dt 1/240 (A 0.00199, B 0.00703) and at the holdout dt 1/480 (A 0.00204, B 0.00586). Solver choice, not a relaxed tolerance.",
+  "rejected_candidate": "TGS dt 1/960 (first v3 draft): calibration PASS, G1 B PASS 0.00568, G1 A FAIL 0.01819",
+  "decided": "2026-10-04, user decision to proceed with G1 as the zero-g physics candidate and revise the gate",
+  "simulator": "Isaac Sim 6.0.1",
+  "physics": {
+    "dt_s": 0.004166666666666667,
+    "substeps": 1,
+    "solver_type": "PGS",
+    "position_iterations": 16,
+    "velocity_iterations": 4,
+    "duration_s": 10.0,
+    "gravity_m_s2": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "linear_damping": 0.0,
+    "angular_damping": 0.0,
+    "sleep_threshold": 0.0,
+    "self_collision": false,
+    "joint_friction": 0.0,
+    "fix_base": false
+  },
+  "momentum": {
+    "reference_frame": "world",
+    "angular_reference_point": "system_center_of_mass",
+    "sampling": "every_physics_step"
+  },
+  "test_a": {
+    "name": "no_actuation",
+    "drive_stiffness": 0.0,
+    "drive_damping": 0.0,
+    "initial_base_linear_velocity_m_s": [
+      0.05,
+      0.0,
+      0.0
+    ],
+    "initial_base_angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.1
+    ],
+    "max_relative_linear_momentum_error": 0.001,
+    "max_relative_angular_momentum_error": 0.01
+  },
+  "test_b": {
+    "name": "internal_actuation_from_rest",
+    "driven_joints": "both_arms_shoulder_and_elbow",
+    "drive_type": "position_PD",
+    "drive_stiffness": 100.0,
+    "drive_damping": 10.0,
+    "other_drive_stiffness": 0.0,
+    "other_drive_damping": 0.0,
+    "amplitude_rad": 0.5,
+    "frequency_hz": 0.5,
+    "initial_all_link_velocities": "zero",
+    "max_linear_momentum_fraction_of_pref": 0.001,
+    "max_angular_momentum_fraction_of_lref": 0.01,
+    "pref_definition": "max_t sum_i m_i * |v_i|",
+    "lref_definition": "max_t sum_i |m_i * (r_i - c) x v_i + R_i I_i R_i^T w_i|"
+  }
+}

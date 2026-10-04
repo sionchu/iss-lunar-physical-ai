@@ -12,7 +12,8 @@ from momentum_measure import measure
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / "configs/iss_v0_momentum.json").read_text(encoding="utf-8"))
+CONFIG_PATH = ROOT / "configs/iss_v0_momentum_v3.json"   # current gate (v1 kept as history)
+CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 OUT = ROOT / "outputs/iss_v0_calibration_result.json"
 DIM = (0.4, 0.2, 0.1)
 MASS = 2.0
@@ -148,8 +149,19 @@ def run_case(app, label):
 
 
 def main():
+    global CONFIG, CONFIG_PATH, OUT
+    import argparse
+    import hashlib
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
+    parser.add_argument("--out", type=Path, default=OUT)
+    args = parser.parse_args()
+    CONFIG_PATH, OUT = args.config.resolve(), args.out.resolve()
+    CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    result = {"box": {"status": "NOT_RUN"}, "two_link": {"status": "NOT_RUN"}, "error": None}
+    result = {"config": str(CONFIG_PATH), "config_sha256": hashlib.sha256(CONFIG_PATH.read_bytes()).hexdigest(),
+              "config_version": CONFIG.get("version", "v1"),
+              "box": {"status": "NOT_RUN"}, "two_link": {"status": "NOT_RUN"}, "error": None}
     app = None
     try:
         app = SimulationApp({"headless": True})

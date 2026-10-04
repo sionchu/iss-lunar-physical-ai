@@ -1,8 +1,8 @@
-"""S1.2: replay the recorded PhysX run in the ISS scene and render a 3-panel 1920x1080 clip (RTX path tracing).
+"""S1.3: replay the recorded PhysX run and render a 3-panel 1920x1080 clip (RTX path tracing).
 
-C:\\isaacsim\\python.bat scripts/s12_render_panels.py [--quick] [--subframes N]
-Panels: (1) R2 kinematic clip, (2) G1 physics replay, (3) cargo physics replay in the collision layer.
-Physics is NOT re-simulated here: poses come from outputs/s12/physics_record.json, physics is disabled on the replica.
+C:\\isaacsim\\python.bat scripts/iss_physics_render.py [--quick] [--subframes=N]
+Panels: (1) R2 kinematic clip, (2) G1 posture hold (physics replay), (3) G1 reach + scripted grasp of Handrail_B.
+Nothing is re-simulated: poses come from outputs/iss_physics/physics_record.json; physics is disabled on the replica.
 """
 import argparse
 import json
@@ -22,8 +22,7 @@ from isaacsim import SimulationApp  # noqa: E402
 app = SimulationApp({"headless": True, "width": 640, "height": 1080})   # before any pxr import
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from s12_common import (CARGO_PATH, FPS, G1_PATH, OUT, PANEL_H, PANEL_W, PANELS, ROOT, SCENE,  # noqa: E402
-                        add_cargo, add_g1, look_at)
+import iss_physics_common as C  # noqa: E402
 
 import carb  # noqa: E402
 import numpy as np  # noqa: E402
@@ -33,7 +32,7 @@ import omni.usd  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 from pxr import Gf, PhysxSchema, Usd, UsdGeom, UsdPhysics  # noqa: E402
 
-REC = json.loads((OUT / "physics_record.json").read_text(encoding="utf-8"))
+REC = json.loads((C.OUT / "physics_record.json").read_text(encoding="utf-8"))
 if REC.get("error"):
     raise SystemExit(f"physics record has an error: {REC['error']}")
 FR = REC["frames"]
@@ -47,40 +46,47 @@ for k, v in (("/rtx/rendermode", "PathTracing"), ("/rtx/pathtracing/spp", 1),
     s.set(k, v)
 
 ctx = omni.usd.get_context()
-ctx.open_stage(str(SCENE))
+ctx.open_stage(str(C.SCENE))
 stage = ctx.get_stage()
-add_g1(stage, ROOT / REC["g1_usd"])
-add_cargo(stage, physics=False)
+g1_usd = C.ROOT / REC["g1_usd"]
+C.add_g1(stage, C.HOLD_PATH, g1_usd, C.HOLD_PLACE["translate"], C.HOLD_PLACE["rotateXYZ"])
+C.add_g1(stage, C.GRASP_PATH, g1_usd, tuple(REC["grasp_g1_translate"]), (0.0, 0.0, C.GRASP_YAW))
 for _ in range(30):
     app.update()
-# replica only: no simulation of G1 (poses are replayed from the record)
-for p in list(Usd.PrimRange(stage.GetPrimAtPath(G1_PATH))):
-    if p.HasAPI(UsdPhysics.RigidBodyAPI):
-        UsdPhysics.RigidBodyAPI(p).CreateRigidBodyEnabledAttr(False)
-    if p.IsA(UsdPhysics.Joint):
-        UsdPhysics.Joint(p).CreateJointEnabledAttr(False)
-    if p.HasAPI(UsdPhysics.ArticulationRootAPI):
-        PhysxSchema.PhysxArticulationAPI.Apply(p).CreateArticulationEnabledAttr(False)
+for root in (C.HOLD_PATH, C.GRASP_PATH):   # replica only: no simulation
+    # de-instance: RTX kept instanced hand meshes visible when the actor root was hidden per panel (seen in QA)
+    for p in [p for p in Usd.PrimRange(stage.GetPrimAtPath(root)) if p.IsInstance()]:
+        p.SetInstanceable(False)
+    for p in list(Usd.PrimRange(stage.GetPrimAtPath(root))):
+        if p.HasAPI(UsdPhysics.RigidBodyAPI):
+            UsdPhysics.RigidBodyAPI(p).CreateRigidBodyEnabledAttr(False)
+        if p.IsA(UsdPhysics.Joint):
+            UsdPhysics.Joint(p).CreateJointEnabledAttr(False)
+        if p.HasAPI(UsdPhysics.ArticulationRootAPI):
+            PhysxSchema.PhysxArticulationAPI.Apply(p).CreateArticulationEnabledAttr(False)
 
 cam = UsdGeom.Camera.Define(stage, "/World/Cameras/Panel")
-cam.CreateHorizontalApertureAttr(36.0 * PANEL_W / PANEL_H)
+cam.CreateHorizontalApertureAttr(36.0 * C.PANEL_W / C.PANEL_H)
 cam.CreateVerticalApertureAttr(36.0)
 cam.CreateClippingRangeAttr(Gf.Vec2f(0.02, 100.0))
 cam_op = UsdGeom.Xformable(cam).AddTransformOp()
-rp = rep.create.render_product(str(cam.GetPath()), (PANEL_W, PANEL_H))
+rp = rep.create.render_product(str(cam.GetPath()), (C.PANEL_W, C.PANEL_H))
 rgb = rep.AnnotatorRegistry.get_annotator("rgb")
 rgb.attach(rp)
 rep.orchestrator.set_capture_on_play(False)
 timeline = omni.timeline.get_timeline_interface()
 world = stage.GetPrimAtPath("/World")
 vis = {k: UsdGeom.Imageable(stage.GetPrimAtPath(p)) for k, p in
-       (("r2", "/World/Actors/R2_Visual"), ("g1", G1_PATH), ("cargo", CARGO_PATH))}
+       (("r2", "/World/Actors/R2_Visual"), ("hold", C.HOLD_PATH), ("grasp", C.GRASP_PATH))}
 
 # ---- pose replay -------------------------------------------------------------------------------------------------
 cache = UsdGeom.XformCache()
-g1_paths, cargo_paths = FR["g1_paths"], FR["cargo_paths"]
-parent_of = {p: str(stage.GetPrimAtPath(p).GetParent().GetPath()) for p in g1_paths}
-static_parent = {p: cache.GetLocalToWorldTransform(stage.GetPrimAtPath(q)) for p, q in parent_of.items() if q not in g1_paths}
+ACTORS = {}
+for key in ("hold", "grasp"):
+    paths = FR[f"{key}_paths"]
+    parent = {p: str(stage.GetPrimAtPath(p).GetParent().GetPath()) for p in paths}
+    static = {p: cache.GetLocalToWorldTransform(stage.GetPrimAtPath(q)) for p, q in parent.items() if q not in paths}
+    ACTORS[key] = (paths, parent, static)
 
 
 def world_m(pos, q):
@@ -105,14 +111,12 @@ def set_local(prim, m):
 
 
 def apply_frame(i):
-    gp, gq = FR["g1"][i]
-    worlds = {p: world_m(gp[k], gq[k]) for k, p in enumerate(g1_paths)}
-    for p in g1_paths:
-        parent = worlds.get(parent_of[p], static_parent.get(p))
-        set_local(stage.GetPrimAtPath(p), worlds[p] * parent.GetInverse())
-    cp, cq = FR["cargo"][i]
-    for k, p in enumerate(cargo_paths):
-        set_local(stage.GetPrimAtPath(p), world_m(cp[k], cq[k]))   # parent /World/Actors/Cargo is identity
+    for key, (paths, parent, static) in ACTORS.items():
+        pos, quat = FR[key][i]
+        worlds = {p: world_m(pos[k], quat[k]) for k, p in enumerate(paths)}
+        for p in paths:
+            par = worlds.get(parent[p], static.get(p))
+            set_local(stage.GetPrimAtPath(p), worlds[p] * par.GetInverse())
 
 
 def render_panel(key, layer, eye, target, focal, frame):
@@ -120,8 +124,8 @@ def render_panel(key, layer, eye, target, focal, frame):
     for k, im in vis.items():
         im.GetVisibilityAttr().Set(UsdGeom.Tokens.inherited if k == key else UsdGeom.Tokens.invisible)
     cam.GetFocalLengthAttr().Set(focal)
-    cam_op.Set(look_at(eye, target))
-    timeline.set_current_time(min(frame, R2_CLIP_END) / FPS)
+    cam_op.Set(C.look_at(eye, target))
+    timeline.set_current_time(min(frame, R2_CLIP_END) / C.FPS)
     app.update()
     rep.orchestrator.step(rt_subframes=args.subframes, delta_time=0.0, pause_timeline=True)
     return Image.fromarray(np.asarray(rgb.get_data())[:, :, :3].astype(np.uint8), "RGB")
@@ -132,20 +136,24 @@ FD = Path("C:/Windows/Fonts")
 F_NAME = ImageFont.truetype(str(FD / "seguisb.ttf"), 34)
 F_TAG = ImageFont.truetype(str(FD / "bahnschrift.ttf"), 17)
 F_TXT = ImageFont.truetype(str(FD / "segoeui.ttf"), 18)
-TAGS = {"r2": ("R2", "KINEMATIC / VISUAL"), "g1": ("G1", "PHYSICS · PhysX PGS"), "cargo": ("CARGO", "PHYSICS · RIGID BODIES")}
-GM = REC["g1_momentum"]
+TAGS = {"r2": ("R2", "KINEMATIC / VISUAL"), "hold": ("G1 · HOLD", "PHYSICS · PhysX PGS"),
+        "grasp": ("G1 · HANDRAIL", "PHYSICS + SCRIPTED GRASP")}
+H, G = REC["hold"], REC["grasp"]
 
 
 def lines(key, i):
     t = FR["t"][i]
     if key == "r2":
-        return ["Authored keyframe clip, no dynamics", "NASA US Lab interior (astrobee_media)", "Isaac Sim 6.0.1 · RTX"]
-    if key == "g1":
-        r = GM["per_frame_angular_ratio_running_max"][i]
-        return [f"t = {t:4.1f} s   free-floating, zero g", "Arm PD sine (gate Test B), contacts filtered",
-                f"|ΔL| / Lref = {r:.4f}   gate ≤ {GM['angular_tolerance']:.2f}"]
-    return [f"t = {t:4.1f} s   3 × 10 kg boxes, zero g", "PhysX contacts with collision proxies",
-            "Collision-layer view · restitution 0.2"]
+        return ["Authored keyframe clip, no dynamics", "R2 physics model fails the momentum gate",
+                "→ physics shown with G1 (next panels)"]
+    if key == "hold":
+        return [f"t = {t:4.1f} s   free-floating, zero g", "All joints PD hold, arms swing (gate sine)",
+                f"|ΔL|/Lref {H['running_ratio'][i]:.4f} (tol 0.010) · turn {FR['hold_rot_deg'][i]:4.1f}°"]
+    if FR["grasped"][i]:
+        state = f"GRASPED at {G['t_s']:.2f} s (fixed-joint constraint)"
+    else:
+        state = f"reaching · hand–rail {FR['hand_dist'][i] * 100:4.1f} cm"
+    return [f"t = {t:4.1f} s   Handrail_B, zero g", state, "No finger/contact physics · not validated"]
 
 
 def overlay(img, key, i):
@@ -154,53 +162,52 @@ def overlay(img, key, i):
     d = ImageDraw.Draw(ov)
     m = 28
     name, tag = TAGS[key]
-    d.rectangle([0, 0, PANEL_W, 92], fill=(10, 12, 16, 150))
+    d.rectangle([0, 0, C.PANEL_W, 92], fill=(10, 12, 16, 150))
     d.text((m, 22), name, font=F_NAME, fill=(255, 255, 255, 240))
     tw = d.textlength(tag, font=F_TAG)
-    x0 = PANEL_W - m - tw - 20
+    x0 = C.PANEL_W - m - tw - 20
     d.rectangle([x0, 32, x0 + tw + 20, 62], outline=(255, 255, 255, 200), width=1)
     d.text((x0 + 10, 37), tag, font=F_TAG, fill=(255, 255, 255, 235))
     ls = lines(key, i)
-    y0 = PANEL_H - 30 - 28 * len(ls)
-    d.rectangle([0, y0 - 18, PANEL_W, PANEL_H], fill=(10, 12, 16, 150))
+    y0 = C.PANEL_H - 30 - 28 * len(ls)
+    d.rectangle([0, y0 - 18, C.PANEL_W, C.PANEL_H], fill=(10, 12, 16, 150))
     for k, s_ in enumerate(ls):
         d.text((m, y0 + 28 * k), s_, font=F_TXT, fill=(255, 255, 255, 230))
     return Image.alpha_composite(base, ov).convert("RGB")
 
 
 def compose(panels):
-    gap = 0
-    out = Image.new("RGB", (PANEL_W * 3, PANEL_H), (8, 8, 10))
+    out = Image.new("RGB", (C.PANEL_W * 3, C.PANEL_H), (8, 8, 10))
     for k, p in enumerate(panels):
-        out.paste(p, (k * PANEL_W, 0))
+        out.paste(p, (k * C.PANEL_W, 0))
     d = ImageDraw.Draw(out)
     for k in (1, 2):
-        d.rectangle([k * PANEL_W - 2, 0, k * PANEL_W + 1, PANEL_H], fill=(8, 8, 10))
+        d.rectangle([k * C.PANEL_W - 2, 0, k * C.PANEL_W + 1, C.PANEL_H], fill=(8, 8, 10))
     return out
 
 
 def main():
     t0 = time.time()
-    frames_dir = OUT / ("frames_quick" if args.quick else "frames")
+    frames_dir = C.OUT / ("frames_quick" if args.quick else "frames")
     shutil.rmtree(frames_dir, ignore_errors=True)
     frames_dir.mkdir(parents=True)
-    idx = [0, 150, 300] if args.quick else list(range(len(FR["t"])))
+    idx = [0, 60, 150, 300] if args.quick else list(range(len(FR["t"])))
     for n, i in enumerate(idx):
         apply_frame(i)
-        panels = [overlay(render_panel(key, layer, eye, tgt, foc, i), key, i) for key, layer, eye, tgt, foc in PANELS]
+        panels = [overlay(render_panel(key, layer, eye, tgt, foc, i), key, i) for key, layer, eye, tgt, foc in C.PANELS]
         compose(panels).save(frames_dir / f"f{i:04d}.png")
         if n % 30 == 0:
             print(f"frame {i} {time.time() - t0:.0f}s", flush=True)
-    receipt = {"record": "outputs/s12/physics_record.json", "subframes": args.subframes, "frames": len(idx),
-               "panel": [PANEL_W, PANEL_H], "panels": PANELS, "seconds": round(time.time() - t0, 1)}
+    receipt = {"record": "outputs/iss_physics/physics_record.json", "subframes": args.subframes, "frames": len(idx),
+               "panel": [C.PANEL_W, C.PANEL_H], "panels": C.PANELS, "seconds": round(time.time() - t0, 1)}
     if not args.quick:
-        shutil.copy(frames_dir / "f0180.png", OUT / "s12_three_panel_still.png")
-        mp4 = OUT / "s12_three_panel_1080p30.mp4"
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", str(frames_dir / "f%04d.png"),
+        shutil.copy(frames_dir / "f0240.png", C.OUT / "iss_physics_three_panel_still.png")
+        mp4 = C.OUT / "iss_physics_three_panel_1080p30.mp4"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(C.FPS), "-i", str(frames_dir / "f%04d.png"),
                         "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p",
                         "-movflags", "+faststart", str(mp4)], check=True)
-        receipt["video"] = str(mp4.relative_to(ROOT))
-    (OUT / f"render_receipt{'_quick' if args.quick else ''}.json").write_text(json.dumps(receipt, indent=1), encoding="utf-8")
+        receipt["video"] = str(mp4.relative_to(C.ROOT))
+    (C.OUT / f"render_receipt{'_quick' if args.quick else ''}.json").write_text(json.dumps(receipt, indent=1), encoding="utf-8")
     print(json.dumps(receipt), flush=True)
 
 

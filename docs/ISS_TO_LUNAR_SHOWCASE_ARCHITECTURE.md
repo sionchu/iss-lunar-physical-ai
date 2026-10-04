@@ -289,6 +289,8 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 
 ## S1.2 Receipt: physics in the ISS scene, three-panel clip (2026-10-04)
 
+> Superseded by **S1.3** below. The S1.2 scripts were renamed and rewritten as `scripts/iss_physics_*.py`; S1.2 is kept as the record of commit `4319667`. S1.3 QA found that RTX kept instanced G1 hand meshes visible when an actor root was hidden per panel. The S1.2 clip may therefore show stray G1 hands in its cargo panel. Not re-checked.
+
 **Verdict: PhysX actually runs in the ISS scene for G1 and the cargo. R2 stays kinematic. In-scene G1 momentum check: PASS (angular 0.00787, linear 0.0000039, gate v3 limits 0.01 / 0.001).**
 
 | Panel | Actor | What drives it | Label |
@@ -302,6 +304,25 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - **G1 telemetry in panel 2** is the running maximum of |ΔL|/Lref from this run (final 0.00787). It is not a constant copied from the gate (the gate's own G1 value is 0.00703). The difference comes from placement/orientation in the scene and is not investigated.
 - **Observed G1 motion:** with total angular momentum ≈ 0, the pelvis reorients by up to ~87° and moves ~0.14 m over 10 s while the arms oscillate and the zero-gain legs/waist swing freely (internal reconfiguration; the COM does not drift by more than the linear tolerance). This is the simulated behavior of a floppy-jointed model, not a controller or an astronaut-like posture.
 - **Not validated:** cargo contact physics (restitution/friction values are authored, not measured), any G1 contact, G1 hardware inertias, and the handrail task. Visual QA: one frame per second of the MP4 decoded and inspected; all three panels move and the labels stay legible.
+
+## S1.3 Receipt: G1 posture hold + Handrail_B grasp, R2 as kinematic context (2026-10-04)
+
+**Verdict:**
+- G1 posture hold: attitude is stabilised (max pelvis turn 13.8° vs ~87° with zero-gain legs in S1.2), but the momentum ratio is **0.0184 > 0.01 → FAIL** for this condition.
+- G1 handrail reach: the scripted grasp **ACHIEVED** at t = 1.77 s, held with a post-grasp hand drift ≤ 0.03 mm.
+- R2 is shown only as the kinematic clip, because its physics model fails the momentum gate (Test B), not because a USD is missing.
+
+| Panel | Actor | What runs | Label |
+| --- | --- | --- | --- |
+| 1 | R2 | S1.1 keyframe clip, holds the last pose after 8 s. Caption: R2 physics model fails the momentum gate, so physics is shown with G1 | `KINEMATIC / VISUAL` |
+| 2 | G1_Hold | PhysX, gate v3 physics. PD 100/10 on **all 29 DOFs** toward the initial pose; arms add the gate Test B sine | `PHYSICS · PhysX PGS` |
+| 3 | G1_Grasp | PhysX, gate v3 physics, posture PD on all DOFs. The right arm interpolates to a reach pose (0.5–2.0 s) with a 0.02 m/s approach drift. When the hand is within 12 mm of its planned grip pose, a **fixed joint world↔right hand is created** (scripted grasp) | `PHYSICS + SCRIPTED GRASP` |
+
+- **Reach pose:** solved before the recorded run by coordinate descent using PhysX itself as forward kinematics (teleport + one step). Right shoulder pitch/roll/yaw + elbow = [-0.953, -0.25, 0.008, 0.836] rad; hand-origin target in the pelvis frame [0.4, -0.16, 0.22] m, residual 4.6 mm. G1_Grasp is then placed so that, at that pose, the hand origin sits 0.06 m aisle-side of the Handrail_B grip axis (derived from the affordance prim). At the grasp the hand origin was 7.2 cm from the grip axis.
+- **Contacts:** both G1s are collision-filtered against the environment and each other. There is no finger, palm or rail contact physics. The grasp is a constraint, and the hand mesh can overlap the rail. The hold-condition momentum ratio is reported as measured (running value in panel 2). It is not a gate verdict, because the gate drives only the arm DOFs. Stiff PD on all joints is a different condition and fails the tolerance here; tuning it to pass was not attempted.
+- **Pipeline:** `scripts/iss_physics_record.py` (IK pass, then the recorded 10 s run, 2,400 PhysX steps, poses at 30 fps) writes `outputs/iss_physics/physics_record.json`. `scripts/iss_physics_render.py` replays it on a physics-disabled, de-instanced copy and path-traces three 640×1080 cameras (32 subframes) into `outputs/iss_physics/iss_physics_three_panel_1080p30.mp4` and `iss_physics_three_panel_still.png`. Shared layout: `scripts/iss_physics_common.py`. Outputs are gitignored.
+- **QA findings fixed:** (1) the first capture threshold attached the hand 8.5 cm short of the rail; it was tightened to the planned pose ±12 mm, with a 6 cm palm standoff. (2) RTX rendered instanced hand meshes of a hidden G1 in another panel; the replica is now de-instanced. (3) The panel-3 camera was moved to a side view along the wall, so the hand–rail relation is readable.
+- **Not validated:** grasp mechanics (scripted constraint), G1 hardware inertias, the posture controller (plain joint PD, no balance or attitude control), and anything involving contact.
 
 ## Claim ladder
 

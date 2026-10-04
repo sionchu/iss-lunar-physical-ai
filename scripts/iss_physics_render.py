@@ -15,6 +15,7 @@ from pathlib import Path
 ap = argparse.ArgumentParser()
 ap.add_argument("--quick", action="store_true")
 ap.add_argument("--subframes", type=int, default=32)
+ap.add_argument("--resume", action="store_true", help="keep existing frames and render only the missing ones")
 args = ap.parse_args()
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -186,17 +187,22 @@ def compose(panels):
 def main():
     t0 = time.time()
     frames_dir = C.OUT / ("frames_quick" if args.quick else "frames")
-    shutil.rmtree(frames_dir, ignore_errors=True)
-    frames_dir.mkdir(parents=True)
+    if not args.resume:
+        shutil.rmtree(frames_dir, ignore_errors=True)
+    frames_dir.mkdir(parents=True, exist_ok=True)
     idx = [0, 60, 150, 300] if args.quick else list(range(len(FR["t"])))
+    skipped = 0
     for n, i in enumerate(idx):
+        if args.resume and (frames_dir / f"f{i:04d}.png").exists():
+            skipped += 1
+            continue
         apply_frame(i)
         panels = [overlay(render_panel(key, layer, eye, tgt, foc, i), key, i) for key, layer, eye, tgt, foc in C.PANELS]
         compose(panels).save(frames_dir / f"f{i:04d}.png")
         if n % 30 == 0:
             print(f"frame {i} {time.time() - t0:.0f}s", flush=True)
     receipt = {"record": "outputs/iss_physics/physics_record.json", "subframes": args.subframes, "frames": len(idx),
-               "panel": [C.PANEL_W, C.PANEL_H], "panels": C.PANELS, "seconds": round(time.time() - t0, 1)}
+               "panel": [C.PANEL_W, C.PANEL_H], "panels": C.PANELS, "resumed_skipped_frames": skipped, "seconds": round(time.time() - t0, 1)}
     if not args.quick:
         shutil.copy(frames_dir / "f0240.png", C.OUT / "iss_physics_three_panel_still.png")
         mp4 = C.OUT / "iss_physics_three_panel_1080p30.mp4"

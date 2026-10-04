@@ -208,4 +208,5 @@ def _done(fut):
         log(f"walkthrough failed: {fut.exception()!r}")
 
 
-asyncio.ensure_future(main()).add_done_callback(_done)
+if __name__ == "__main__":   # helpers are reused by gui_demo_iss_physics.py
+    asyncio.ensure_future(main()).add_done_callback(_done)

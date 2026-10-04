@@ -287,6 +287,22 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - R2 self-collision and hand-rail contact are not checked by physics; clearance is a conservative AABB check against the measured aisle every 10 frames.
 - The rendered clip and GUI recording depend on the gitignored NASA media and R2 import being regenerated locally.
 
+## S1.2 Receipt: physics in the ISS scene, three-panel clip (2026-10-04)
+
+**Verdict: PhysX actually runs in the ISS scene for G1 and the cargo. R2 stays kinematic. In-scene G1 momentum check: PASS (angular 0.00787, linear 0.0000039, gate v3 limits 0.01 / 0.001).**
+
+| Panel | Actor | What drives it | Label |
+| --- | --- | --- | --- |
+| 1 | R2 | S1.1 keyframe clip (USD time samples), holds the last pose after 8 s | `KINEMATIC / VISUAL` |
+| 2 | G1 (Unitree `g1_29dof.urdf`, SHA-256 `e1dc8936…`) | PhysX PGS, gate v3 physics settings, free-floating; arm PD sine exactly as gate Test B (shoulder ×3 + elbow per arm, 100/10, 0.5 rad, 0.5 Hz); all other joints zero gain | `PHYSICS · PhysX PGS` |
+| 3 | 3 generic CTB-sized boxes (0.50×0.43×0.25 m, 10 kg; not a NASA cargo model) | PhysX rigid bodies, authored initial velocities, restitution 0.2 / friction 0.5, colliding with the S1.1 collision proxies (shown in the collision-layer view) | `PHYSICS · RIGID BODIES` |
+
+- **Pipeline:** `scripts/s12_record_physics.py` opens `scenes/iss_microlab_v0.usda`, deactivates R2, references a fresh G1 URDF import, adds the cargo and collision groups, runs 2,400 PhysX steps (dt 1/240, 10 s), and records link/box poses at 30 fps plus G1 momentum every step to `outputs/s12/physics_record.json`. `scripts/s12_render_panels.py` replays those poses on a physics-disabled copy and path-traces three 640×1080 cameras per frame (32 subframes) into `outputs/s12/s12_three_panel_1080p30.mp4` (1920×1080, 30 fps, 301 frames, 10.03 s) and `s12_three_panel_still.png`. Shared layout: `scripts/s12_common.py`. Nothing is re-simulated during rendering.
+- **G1 contact condition:** a collision group filters G1 against the environment proxies and the cargo, so G1 runs under the same no-contact condition as the gate. The minimum G1 link-origin clearance to the measured aisle over the run was 0.247 m. Link meshes were inspected visually only.
+- **G1 telemetry in panel 2** is the running maximum of |ΔL|/Lref from this run (final 0.00787). It is not a constant copied from the gate (the gate's own G1 value is 0.00703). The difference comes from placement/orientation in the scene and is not investigated.
+- **Observed G1 motion:** with total angular momentum ≈ 0, the pelvis reorients by up to ~87° and moves ~0.14 m over 10 s while the arms oscillate and the zero-gain legs/waist swing freely (internal reconfiguration; the COM does not drift by more than the linear tolerance). This is the simulated behavior of a floppy-jointed model, not a controller or an astronaut-like posture.
+- **Not validated:** cargo contact physics (restitution/friction values are authored, not measured), any G1 contact, G1 hardware inertias, and the handrail task. Visual QA: one frame per second of the MP4 decoded and inspected; all three panels move and the labels stay legible.
+
 ## Claim ladder
 
 ### Allowed now

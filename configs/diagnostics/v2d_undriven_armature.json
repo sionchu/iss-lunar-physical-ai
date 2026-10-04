@@ -1,0 +1,71 @@
+{
+  "version": "v2d-diagnostic-undriven-armature",
+  "derived_from": "configs/iss_v0_momentum_v2_armature.json",
+  "change": "DIAGNOSTIC ONLY: armature 0.01 on undriven DOFs, driven Test B arm DOFs keep importer default (0); not a gate config",
+  "armature_provenance": {
+    "value_kg_m2": 0.01,
+    "source": "Unitree vendor MuJoCo model unitreerobotics/unitree_mujoco unitree_robots/g1/g1_29dof.xml (armature=0.01 on torso/leg/ankle/arm/wrist motor classes); same value in google-deepmind/mujoco_menagerie unitree_g1/g1.xml",
+    "status": "vendor model value, not derived from motor rotor inertia x gear ratio^2",
+    "applies_to": "G1 only; for R2 this value has no provenance and any R2 run with it is DIAGNOSTIC"
+  },
+  "simulator": "Isaac Sim 6.0.1",
+  "physics": {
+    "dt_s": 0.004166666666666667,
+    "substeps": 1,
+    "solver_type": "TGS",
+    "position_iterations": 16,
+    "velocity_iterations": 4,
+    "duration_s": 10.0,
+    "gravity_m_s2": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "linear_damping": 0.0,
+    "angular_damping": 0.0,
+    "sleep_threshold": 0.0,
+    "self_collision": false,
+    "joint_friction": 0.0,
+    "fix_base": false,
+    "joint_armature_kg_m2": 0.01,
+    "joint_armature_scope": "undriven"
+  },
+  "momentum": {
+    "reference_frame": "world",
+    "angular_reference_point": "system_center_of_mass",
+    "sampling": "every_physics_step"
+  },
+  "test_a": {
+    "name": "no_actuation",
+    "drive_stiffness": 0.0,
+    "drive_damping": 0.0,
+    "initial_base_linear_velocity_m_s": [
+      0.05,
+      0.0,
+      0.0
+    ],
+    "initial_base_angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.1
+    ],
+    "max_relative_linear_momentum_error": 0.001,
+    "max_relative_angular_momentum_error": 0.01
+  },
+  "test_b": {
+    "name": "internal_actuation_from_rest",
+    "driven_joints": "both_arms_shoulder_and_elbow",
+    "drive_type": "position_PD",
+    "drive_stiffness": 100.0,
+    "drive_damping": 10.0,
+    "other_drive_stiffness": 0.0,
+    "other_drive_damping": 0.0,
+    "amplitude_rad": 0.5,
+    "frequency_hz": 0.5,
+    "initial_all_link_velocities": "zero",
+    "max_linear_momentum_fraction_of_pref": 0.001,
+    "max_angular_momentum_fraction_of_lref": 0.01,
+    "pref_definition": "max_t sum_i m_i * |v_i|",
+    "lref_definition": "max_t sum_i |m_i * (r_i - c) x v_i + R_i I_i R_i^T w_i|"
+  }
+}

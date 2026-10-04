@@ -78,3 +78,22 @@ The G1 control used the locally present official [`unitreerobotics/unitree_ros`]
 **Conclusion:** the original near-100% Test A loss was a harness initialization fault, with two additional tensor-frame calculation faults. A fourth harness defect then remained: Test B inherited Test A's final joint positions. After making every test start from a freshly reopened articulation state, both calibration bodies, R2 and G1 pass Test A, but **neither candidate passes Test B**. R2 fails both B limits (P 0.00208584, L 0.02823994); G1 passes B linear momentum but misses the angular limit narrowly (L 0.01134361 vs 0.01). The exact residual causes are UNKNOWN. Neither R2 nor G1 is accepted as the canonical ISS v0 physics asset by this gate. Do not relax thresholds or carry V9's unsupported armature into the official config to manufacture a PASS.
 
 Reproduce the current gate with `C:\isaacsim\python.bat scripts/iss_v0_calibration.py`, then run `C:\isaacsim\python.bat scripts/iss_v0_momentum_test.py --urdf <URDF> --out <AB.json>` and `C:\isaacsim\python.bat scripts/iss_v0_momentum_test.py --urdf <URDF> --test-b-only --out <B.json>`. Compare the two B `initial_state.sha256_float32` values, DOF positions and error ratios before accepting sequence independence. R2 uses `outputs/r2_derived/r2c6_zero_g.urdf`; G1 resolves from the local Unitree checkout above. The 2026-10-04 reset-safe records are `outputs/reset/r2_ab.json`, `r2_b.json`, `g1_ab.json`, and `g1_b.json`. The Isaac wrapper may return exit code 0 even when the JSON gate verdict is FAIL; the structured JSON verdict is authoritative.
+
+## v2 vendor-armature check (2026-10-04)
+
+**Verdict: FAIL for both candidates. Joint armature does not close Test B; the v1 gate and its verdicts are unchanged.**
+
+`configs/iss_v0_momentum_v2_armature.json` (SHA-256 `867903f35b8133be6000432ad3614a1ba35a97decf026fd5b375325795bbba59`) is v1 plus `physics.joint_armature_kg_m2 = 0.01` on every DOF. Provenance: Unitree's vendor MuJoCo model `unitreerobotics/unitree_mujoco` `unitree_robots/g1/g1_29dof.xml` sets `armature="0.01"` on all motor classes (same value in `google-deepmind/mujoco_menagerie` `unitree_g1/g1.xml`). It is a vendor model value, not derived from rotor inertia × gear ratio². For R2 the value has no provenance, so R2 rows are diagnostic. `configs/diagnostics/v2d_undriven_armature.json` (diagnostic only) applies it to undriven DOFs, the reset-safe analogue of the old V9. `scripts/iss_v0_momentum_test.py` gained `--config`; armature is applied after the fresh-stage reset and read back, and every result records `config_version`, `config_sha256` and the per-test DOF armature range. Results are in `outputs/v2_armature/` (gitignored).
+
+| Run | Config | Test A (P / L) | Test B P ratio (≤0.001) | Test B L ratio (≤0.01) | B |
+| --- | --- | --- | --- | --- | --- |
+| G1 baseline re-run | v1 | PASS | 0.00000466 | 0.01134361 | FAIL (reproduces the reset-safe record) |
+| G1 | v2, all 29 DOFs | PASS | 0.00000248 | 0.02029583 | FAIL (worse) |
+| G1 | v2d, 21 undriven DOFs | — | 0.00000294 | 0.01528290 | FAIL |
+| R2 | v2, all 74 DOFs (diagnostic) | PASS | 0.00002694 | 0.01336100 | FAIL |
+| R2 | v2d, 66 undriven DOFs (diagnostic) | — | 0.00002357 | 0.01262060 | FAIL |
+
+- B-only runs reproduced the A→B values exactly (same initial-state hash per robot: G1 `005db1566d15…`, R2 `7d94109cf49e…`), and a re-run after reordering the armature code gave identical G1 v2 ratios.
+- Armature lowers R2's linear residual below the limit (0.00209 → ~0.00002) and roughly halves its angular residual (0.0282 → 0.0126–0.0134), but neither run passes. The old V9 PASS came from the sequence-dependent harness and is not reproduced under the reset-safe lifecycle.
+- For G1, vendor armature makes the angular residual worse; armature is not the cause of G1's Test B residual.
+- Root cause of the remaining angular residuals: UNKNOWN. Next diagnostic candidates (not run): timestep / solver-iteration ablation under the reset-safe harness, and an independent check of the angular-momentum measurement on an articulated calibration body.

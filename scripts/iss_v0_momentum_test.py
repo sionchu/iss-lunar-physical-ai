@@ -104,18 +104,24 @@ def initial_state(art, bodies):
 
 
 def main():
+    global CONFIG, CONFIG_PATH
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--urdf", type=Path, default=URDF)
     parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH,
+                        help="gate config; non-default configs must carry their own version and provenance")
     only = parser.add_mutually_exclusive_group()
     only.add_argument("--test-a-only", action="store_true")
     only.add_argument("--test-b-only", action="store_true")
     args = parser.parse_args()
+    CONFIG_PATH = args.config.resolve()
+    CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     keys = ("test_a",) if args.test_a_only else ("test_b",) if args.test_b_only else ("test_a", "test_b")
     urdf = args.urdf.resolve()
     out = args.out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-    result = {"config": str(CONFIG_PATH), "urdf": str(urdf), "test_a": {"status": "NOT_RUN"},
+    result = {"config": str(CONFIG_PATH), "config_sha256": hashlib.sha256(CONFIG_PATH.read_bytes()).hexdigest(),
+              "config_version": CONFIG.get("version", "v1"), "urdf": str(urdf), "test_a": {"status": "NOT_RUN"},
               "test_b": {"status": "NOT_RUN"}, "inertia_frame": "PhysX tensor inertia in link body frame about COM; rotated by link orientation only",
               "test_lifecycle": "fresh stage per test: imported USD reopened, dirty file layers reloaded, physics settings re-authored",
               "tests_run_in_order": list(keys), "error": None}
@@ -186,6 +192,20 @@ def main():
                 if not driven:
                     raise RuntimeError(f"No shoulder/elbow arm DOFs matched: {dof_names}")
                 gains[0, driven] = CONFIG[key]["drive_stiffness"]
+            armature = CONFIG["physics"].get("joint_armature_kg_m2")   # absent in v1 = importer default
+            if armature is not None:
+                scope = CONFIG["physics"].get("joint_armature_scope", "all")   # "all" | "undriven" (diagnostic)
+                values = art.get_dof_armatures().numpy()
+                mask = np.ones(art.num_dofs, dtype=bool)
+                if scope == "undriven":
+                    mask[driven] = False
+                values[0, mask] = armature
+                art.set_dof_armatures(values)
+                if not np.allclose(art.get_dof_armatures().numpy(), values):
+                    raise RuntimeError("Armature readback mismatch")
+            arm_now = art.get_dof_armatures().numpy()[0]
+            state["dof_armature"] = {"min": float(arm_now.min()), "max": float(arm_now.max()),
+                                     "nonzero_dofs": int((arm_now > 0).sum()), "dofs": int(arm_now.size)}
             damping = np.zeros_like(gains)
             if driven:
                 damping[0, driven] = CONFIG[key]["drive_damping"]

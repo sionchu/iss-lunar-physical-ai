@@ -1,7 +1,7 @@
-"""S1.3: replay the recorded PhysX run and render a 3-panel 1920x1080 clip (RTX path tracing).
+"""S1.4: replay the recorded PhysX worksite run and render a 3-panel 1920x1080 clip (RTX path tracing).
 
 C:\\isaacsim\\python.bat scripts/iss_physics_render.py [--quick] [--subframes=N]
-Panels: (1) R2 kinematic clip, (2) G1 posture hold (physics replay), (3) G1 reach + scripted grasp of Handrail_B.
+Panels: (1) R2 kinematic clip, (2) G1 worksite task (physics replay), (3) same replay in the affordance layer.
 Nothing is re-simulated: poses come from outputs/iss_physics/physics_record.json; physics is disabled on the replica.
 """
 import argparse
@@ -49,11 +49,10 @@ ctx = omni.usd.get_context()
 ctx.open_stage(str(C.SCENE))
 stage = ctx.get_stage()
 g1_usd = C.ROOT / REC["g1_usd"]
-C.add_g1(stage, C.HOLD_PATH, g1_usd, C.HOLD_PLACE["translate"], C.HOLD_PLACE["rotateXYZ"])
-C.add_g1(stage, C.GRASP_PATH, g1_usd, tuple(REC["grasp_g1_translate"]), (0.0, 0.0, C.GRASP_YAW))
+C.add_g1(stage, g1_usd, tuple(REC["g1_translate"]))
 for _ in range(30):
     app.update()
-for root in (C.HOLD_PATH, C.GRASP_PATH):   # replica only: no simulation
+for root in (C.G1_PATH,):   # replica only: no simulation
     # de-instance: RTX kept instanced hand meshes visible when the actor root was hidden per panel (seen in QA)
     for p in [p for p in Usd.PrimRange(stage.GetPrimAtPath(root)) if p.IsInstance()]:
         p.SetInstanceable(False)
@@ -77,16 +76,14 @@ rep.orchestrator.set_capture_on_play(False)
 timeline = omni.timeline.get_timeline_interface()
 world = stage.GetPrimAtPath("/World")
 vis = {k: UsdGeom.Imageable(stage.GetPrimAtPath(p)) for k, p in
-       (("r2", "/World/Actors/R2_Visual"), ("hold", C.HOLD_PATH), ("grasp", C.GRASP_PATH))}
+       (("r2", "/World/Actors/R2_Visual"), ("g1", C.G1_PATH))}
+SHOW = {"r2": "r2", "g1": "g1", "aff": "g1"}      # panel key -> visible actor
 
 # ---- pose replay -------------------------------------------------------------------------------------------------
 cache = UsdGeom.XformCache()
-ACTORS = {}
-for key in ("hold", "grasp"):
-    paths = FR[f"{key}_paths"]
-    parent = {p: str(stage.GetPrimAtPath(p).GetParent().GetPath()) for p in paths}
-    static = {p: cache.GetLocalToWorldTransform(stage.GetPrimAtPath(q)) for p, q in parent.items() if q not in paths}
-    ACTORS[key] = (paths, parent, static)
+PATHS = FR["paths"]
+PARENT = {p: str(stage.GetPrimAtPath(p).GetParent().GetPath()) for p in PATHS}
+STATIC = {p: cache.GetLocalToWorldTransform(stage.GetPrimAtPath(q)) for p, q in PARENT.items() if q not in PATHS}
 
 
 def world_m(pos, q):
@@ -111,18 +108,17 @@ def set_local(prim, m):
 
 
 def apply_frame(i):
-    for key, (paths, parent, static) in ACTORS.items():
-        pos, quat = FR[key][i]
-        worlds = {p: world_m(pos[k], quat[k]) for k, p in enumerate(paths)}
-        for p in paths:
-            par = worlds.get(parent[p], static.get(p))
-            set_local(stage.GetPrimAtPath(p), worlds[p] * par.GetInverse())
+    pos, quat = FR["poses"][i]
+    worlds = {p: world_m(pos[k], quat[k]) for k, p in enumerate(PATHS)}
+    for p in PATHS:
+        par = worlds.get(PARENT[p], STATIC.get(p))
+        set_local(stage.GetPrimAtPath(p), worlds[p] * par.GetInverse())
 
 
 def render_panel(key, layer, eye, target, focal, frame):
     world.GetVariantSets().GetVariantSet("truthLayer").SetVariantSelection(layer)
     for k, im in vis.items():
-        im.GetVisibilityAttr().Set(UsdGeom.Tokens.inherited if k == key else UsdGeom.Tokens.invisible)
+        im.GetVisibilityAttr().Set(UsdGeom.Tokens.inherited if k == SHOW[key] else UsdGeom.Tokens.invisible)
     cam.GetFocalLengthAttr().Set(focal)
     cam_op.Set(C.look_at(eye, target))
     timeline.set_current_time(min(frame, R2_CLIP_END) / C.FPS)
@@ -136,24 +132,25 @@ FD = Path("C:/Windows/Fonts")
 F_NAME = ImageFont.truetype(str(FD / "seguisb.ttf"), 34)
 F_TAG = ImageFont.truetype(str(FD / "bahnschrift.ttf"), 17)
 F_TXT = ImageFont.truetype(str(FD / "segoeui.ttf"), 18)
-TAGS = {"r2": ("R2", "KINEMATIC / VISUAL"), "hold": ("G1 · HOLD", "PHYSICS · PhysX PGS"),
-        "grasp": ("G1 · HANDRAIL", "PHYSICS + SCRIPTED GRASP")}
-H, G = REC["hold"], REC["grasp"]
+TAGS = {"r2": ("R2", "KINEMATIC / VISUAL"), "g1": ("G1 · WORKSITE", "PHYSICS · PhysX PGS"),
+        "aff": ("TASK TARGETS", "AFFORDANCE LAYER")}
+G = REC["grasp"]
+PHASE = {"drift": "drifting toward Handrail_B", "reach_rail": "right hand reaching the rail",
+         "anchored": "anchored on rail (fixed-joint grasp)", "reach_panel": "left hand reaching the panel",
+         "at_panel": "left hand at panel (no contact)"}
 
 
 def lines(key, i):
-    t = FR["t"][i]
+    t, ph = FR["t"][i], FR["phase"][i]
     if key == "r2":
         return ["Authored keyframe clip, no dynamics", "R2 physics model fails the momentum gate",
                 "→ physics shown with G1 (next panels)"]
-    if key == "hold":
-        return [f"t = {t:4.1f} s   free-floating, zero g", "All joints PD hold, arms swing (gate sine)",
-                f"|ΔL|/Lref {H['running_ratio'][i]:.4f} (tol 0.010) · turn {FR['hold_rot_deg'][i]:4.1f}°"]
-    if FR["grasped"][i]:
-        state = f"GRASPED at {G['t_s']:.2f} s (fixed-joint constraint)"
-    else:
-        state = f"reaching · hand–rail {FR['hand_dist'][i] * 100:4.1f} cm"
-    return [f"t = {t:4.1f} s   Handrail_B, zero g", state, "No finger/contact physics · not validated"]
+    if key == "g1":
+        return [f"t = {t:4.1f} s   zero g   {PHASE[ph]}",
+                f"right hand → rail {FR['right_d'][i] * 100:4.1f} cm   left → panel {FR['left_d'][i] * 100:4.1f} cm",
+                "Grasp = scripted constraint, no contact physics"]
+    return ["Teal: graspable handrails   Blue: panel", "What the task layer exposes to the robot",
+            "Same PhysX replay, affordance view"]
 
 
 def overlay(img, key, i):

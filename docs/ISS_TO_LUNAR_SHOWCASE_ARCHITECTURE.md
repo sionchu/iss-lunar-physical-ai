@@ -307,6 +307,8 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 
 ## S1.3 Receipt: G1 posture hold + Handrail_B grasp, R2 as kinematic context (2026-10-04)
 
+> Superseded by **S1.4** below. The S1.3 hold panel replayed the gate Test B arm sine. That is a test excitation, not an IVA task, and it read as dancing in review. S1.3 is kept as the record of commit `c760420`.
+
 **Verdict:**
 - G1 posture hold: attitude is stabilised (max pelvis turn 13.8° vs ~87° with zero-gain legs in S1.2), but the momentum ratio is **0.0184 > 0.01 → FAIL** for this condition.
 - G1 handrail reach: the scripted grasp **ACHIEVED** at t = 1.77 s, held with a post-grasp hand drift ≤ 0.03 mm.
@@ -323,6 +325,25 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - **Pipeline:** `scripts/iss_physics_record.py` (IK pass, then the recorded 10 s run, 2,400 PhysX steps, poses at 30 fps) writes `outputs/iss_physics/physics_record.json`. `scripts/iss_physics_render.py` replays it on a physics-disabled, de-instanced copy and path-traces three 640×1080 cameras (32 subframes) into `outputs/iss_physics/iss_physics_three_panel_1080p30.mp4` and `iss_physics_three_panel_still.png`. Shared layout: `scripts/iss_physics_common.py`. Outputs are gitignored.
 - **QA findings fixed:** (1) the first capture threshold attached the hand 8.5 cm short of the rail; it was tightened to the planned pose ±12 mm, with a 6 cm palm standoff. (2) RTX rendered instanced hand meshes of a hidden G1 in another panel; the replica is now de-instanced. (3) The panel-3 camera was moved to a side view along the wall, so the hand–rail relation is readable.
 - **Not validated:** grasp mechanics (scripted constraint), G1 hardware inertias, the posture controller (plain joint PD, no balance or attitude control), and anything involving contact.
+
+## S1.4 Receipt: G1 IVA worksite task (anchor on handrail, reach the panel) (2026-10-04)
+
+**Verdict:**
+- **Right hand anchored:** the scripted grasp on Handrail_B is ACHIEVED at t = 1.96 s, 0.3 mm from the planned grip point; post-grasp hand drift ≤ 0.02 mm.
+- **Left hand at the panel:** it reaches the maintenance panel point (min 0.9 cm, final 1.7 cm; no contact).
+- The arm-sine excitation is removed from the video. R2 is still kinematic-only, captioned with the real reason (it fails the momentum gate).
+
+| Time | G1 action (one PhysX G1, gate-v3 physics, PD 100/10 posture on all DOFs, contact-filtered) |
+| --- | --- |
+| 0–0.5 s | Floats toward the starboard rack (0.035 m/s initial drift) |
+| 0.5–2.0 s | Right arm reaches Handrail_B. At the closest approach (within 4 cm of the plan) a fixed joint world↔right hand is created: **scripted grasp, not finger contact** |
+| 3.0–5.0 s | Anchored by the right hand, the left arm reaches the maintenance panel (affordance `MaintenancePanel_Target`) |
+| 5.0–10 s | Holds the worksite posture |
+
+- **Reach poses:** IK (coordinate descent, PhysX as forward kinematics). Right residual 1.0 mm, left residual 14.2 mm. Targets are 6 cm aisle-side of the rail axis and the panel face.
+- **Start pose:** extending the arm pushes the floating body back, so the start pose is shifted by the measured miss of short trial reaches. Closest approach per trial: [57.2, 0.0] mm. This is feed-forward placement, not a feedback controller.
+- **Panels:** (1) R2 kinematic clip; (2) G1 worksite (visual layer); (3) the same replay in the affordance layer: teal graspable rails, blue panel target. Outputs: `outputs/iss_physics/iss_physics_three_panel_1080p30.mp4`, `iss_physics_three_panel_still.png` (gitignored).
+- **Not validated:** grasp mechanics and any hand/rail/panel contact; posture control (plain joint PD); G1 hardware inertias. The posture-PD momentum behaviour measured in S1.3 (ratio 0.0184 > 0.01) still applies: whole-body PD is outside the gate-validated condition.
 
 ## Claim ladder
 

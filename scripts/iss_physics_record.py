@@ -1,14 +1,13 @@
-"""S1.3: PhysX run in the ISS scene - G1 posture hold (free-floating) and G1 reaching/grasping Handrail_B.
+"""S1.4: PhysX run in the ISS scene - G1 IVA worksite task (drift, anchor on Handrail_B, reach to the panel).
 
 C:\\isaacsim\\python.bat scripts/iss_physics_record.py
 Physics settings come from the gate config (v3: PGS, dt 1/240, 16/4 iterations, zero gravity/damping/friction).
-Both G1s are contact-filtered. The grasp is a scripted fixed joint (world <-> right hand) created when the hand
-comes within CAPTURE_R of the grip axis: no finger or contact physics. R2 is deactivated for the physics run.
+G1 is contact-filtered. Right-hand anchor = scripted fixed joint (world <-> hand) created when the hand reaches its
+planned pose; the left hand only approaches the panel (no contact). R2 is deactivated for the physics run.
 Output: outputs/iss_physics/physics_record.json (gitignored).
 """
 import hashlib
 import json
-import math
 import sys
 import traceback
 from pathlib import Path
@@ -29,13 +28,13 @@ def smooth(u):
     return u * u * (3 - 2 * u)
 
 
-def quat_rotate(q, v):
+def qrot(q, v):
     w, x, y, z = q
     u = np.array([x, y, z])
     return v + 2 * np.cross(u, np.cross(u, v) + w * v)
 
 
-def quat_conj(q):
+def qconj(q):
     return np.array([q[0], -q[1], -q[2], -q[3]])
 
 
@@ -53,7 +52,6 @@ def main():
         from isaacsim.core.experimental.prims import Articulation, RigidPrim
         from isaacsim.core.simulation_manager import PhysxScene, SimulationManager
         from pxr import Gf, PhysxSchema, UsdGeom, UsdPhysics
-        from momentum_measure import measure
 
         mgr = omni.kit.app.get_app().get_extension_manager()
         mgr.set_extension_enabled_immediate("omni.scene.optimizer.core", True)
@@ -70,10 +68,9 @@ def main():
             raise RuntimeError("cannot open scene")
         stage = ctx.get_stage()
         stage.GetPrimAtPath("/World/Actors/R2_Visual").SetActive(False)
-        C.add_g1(stage, C.HOLD_PATH, g1_usd, C.HOLD_PLACE["translate"], C.HOLD_PLACE["rotateXYZ"])
-        grip_c, grip_axis, grip_half, grip_n = C.rail_segment(stage)
-        grasp_prim = C.add_g1(stage, C.GRASP_PATH, g1_usd,
-                              tuple(grip_c + grip_n * 0.45), (0.0, 0.0, C.GRASP_YAW))   # provisional, refined below
+        W = C.worksite_points(stage)
+        rail_pt, panel_pt, n = (np.array(W[k]) for k in ("rail_pt", "panel_pt", "normal"))
+        g1 = C.add_g1(stage, g1_usd, tuple(rail_pt + n * 0.4))   # provisional, refined after IK
         C.add_collision_groups(stage)
         for _ in range(10):
             app.update()
@@ -86,18 +83,15 @@ def main():
         px = PhysxScene(scene.GetPrim())
         px.set_steps_per_second(round(1.0 / phys["dt_s"]))
         px.set_solver_type(phys["solver_type"])
-        roots = {}
-        for key, path in (("hold", C.HOLD_PATH), ("grasp", C.GRASP_PATH)):
-            r = [str(p.GetPath()) for p in stage.Traverse()
-                 if p.HasAPI(UsdPhysics.ArticulationRootAPI) and str(p.GetPath()).startswith(path + "/")]
-            if len(r) != 1:
-                raise RuntimeError(f"{key}: expected one articulation root, got {r}")
-            roots[key] = r[0]
-            api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(r[0]))
-            api.CreateSolverPositionIterationCountAttr(phys["position_iterations"])
-            api.CreateSolverVelocityIterationCountAttr(phys["velocity_iterations"])
-            api.CreateEnabledSelfCollisionsAttr(False)
-            api.CreateSleepThresholdAttr(0.0)
+        roots = [str(p.GetPath()) for p in stage.Traverse()
+                 if p.HasAPI(UsdPhysics.ArticulationRootAPI) and str(p.GetPath()).startswith(C.G1_PATH + "/")]
+        if len(roots) != 1:
+            raise RuntimeError(f"expected one articulation root, got {roots}")
+        api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
+        api.CreateSolverPositionIterationCountAttr(phys["position_iterations"])
+        api.CreateSolverVelocityIterationCountAttr(phys["velocity_iterations"])
+        api.CreateEnabledSelfCollisionsAttr(False)
+        api.CreateSleepThresholdAttr(0.0)
         for prim in stage.Traverse():
             if prim.HasAPI(UsdPhysics.RigidBodyAPI):
                 b = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
@@ -111,159 +105,170 @@ def main():
             for _ in range(12):
                 app.update()
             SimulationManager.step(steps=1)
-            out = {}
-            for key, root in roots.items():
-                art = Articulation(root)
-                if not art.is_physics_tensor_entity_valid():
-                    raise RuntimeError(f"{key}: articulation tensor invalid")
-                art.set_dof_friction_properties(static_frictions=0.0, dynamic_frictions=0.0, viscous_frictions=0.0)
-                paths = list(art.link_paths[0])
-                out[key] = {"art": art, "names": list(art.link_names), "paths": paths, "bodies": RigidPrim(paths),
-                            "dofs": list(art.dof_names)}
-            return out
+            art = Articulation(roots[0])
+            if not art.is_physics_tensor_entity_valid():
+                raise RuntimeError("articulation tensor invalid")
+            art.set_dof_friction_properties(static_frictions=0.0, dynamic_frictions=0.0, viscous_frictions=0.0)
+            paths = list(art.link_paths[0])
+            return art, list(art.link_names), paths, RigidPrim(paths), list(art.dof_names)
 
-        # ---- pass 1: IK for the reach pose, using PhysX itself as forward kinematics (teleport + one step) ----
-        A = start()
-        g = A["grasp"]
-        art, dofs = g["art"], g["dofs"]
-        ri = [dofs.index(n) for n in C.REACH_DOFS]
-        hand_i, pelvis_i = g["names"].index(C.HAND), g["names"].index("pelvis")
+        # ---- pass 1: IK with PhysX as forward kinematics (teleport + one step), hand positions in the pelvis frame ----
+        cache = UsdGeom.XformCache()
+        art, names, paths, bodies, dofs = start()
+        pelvis_i = names.index("pelvis")
         lo, hi = (x.numpy()[0] for x in art.get_dof_limits())
         q0 = art.get_dof_positions().numpy()
 
-        def hand_in_pelvis(qr):
+        def fk(arm, qa):
             q = q0.copy()
-            q[0, ri] = qr
+            q[0, arm["idx"]] = qa
             art.set_dof_positions(q)
             art.set_dof_velocities(np.zeros_like(q))
             art.set_velocities(linear_velocities=[[0, 0, 0]], angular_velocities=[[0, 0, 0]])
             SimulationManager.step(steps=1)
-            pos, quat = (x.numpy().astype(float) for x in g["bodies"].get_world_poses())
-            return quat_rotate(quat_conj(quat[pelvis_i]), pos[hand_i] - pos[pelvis_i]), quat[pelvis_i]
+            pos, quat = (x.numpy().astype(float) for x in bodies.get_world_poses())
+            return qrot(qconj(quat[pelvis_i]), pos[arm["hand_i"]] - pos[pelvis_i])
 
-        target = np.array(C.REACH_TARGET_PELVIS)
-        qr = q0[0, ri].astype(float).copy()
-        h, _ = hand_in_pelvis(qr)
-        err = np.linalg.norm(h - target)
-        step = 0.25
-        while step > 0.004:
-            improved = False
-            for j in range(len(ri)):
-                for s in (step, -step):
-                    cand = qr.copy()
-                    cand[j] = np.clip(cand[j] + s, lo[ri[j]], hi[ri[j]])
-                    hc, _ = hand_in_pelvis(cand)
-                    e = np.linalg.norm(hc - target)
-                    if e < err - 1e-5:
-                        qr, h, err, improved = cand, hc, e, True
-            if not improved:
-                step *= 0.5
-        h_reach, _ = hand_in_pelvis(qr)
-        rec["reach"] = {"dofs": C.REACH_DOFS, "q_rad": qr.tolist(), "hand_in_pelvis_m": h_reach.tolist(),
-                        "ik_target_m": list(C.REACH_TARGET_PELVIS), "ik_residual_m": float(err)}
+        def ik(arm, target):
+            qa = q0[0, arm["idx"]].astype(float).copy()
+            err = np.linalg.norm(fk(arm, qa) - target)
+            step = 0.25
+            while step > 0.004:
+                better = False
+                for j in range(len(qa)):
+                    for s in (step, -step):
+                        c = qa.copy()
+                        c[j] = np.clip(c[j] + s, lo[arm["idx"][j]], hi[arm["idx"][j]])
+                        e = np.linalg.norm(fk(arm, c) - target)
+                        if e < err - 1e-5:
+                            qa, err, better = c, e, True
+                if not better:
+                    step *= 0.5
+            return qa, fk(arm, qa), float(err)
+
+        arms = {}
+        for side, a in C.ARMS.items():
+            arms[side] = dict(a, idx=[dofs.index(d) for d in a["dofs"]], hand_i=names.index(a["hand"]))
+        R = arms["right"]
+        R["q"], R["h"], R["ik_err"] = ik(R, np.array(R["target_pelvis"]))
         timeline.stop()
         for _ in range(5):
             app.update()
-
-        # ---- place G1_Grasp so that, at the reach pose, the hand sits HAND_STANDOFF aisle-side of the grip centre ----
-        cache = UsdGeom.XformCache()
-        pelvis_prim = stage.GetPrimAtPath(g["paths"][pelvis_i])
-        pm = cache.GetLocalToWorldTransform(pelvis_prim)
+        pm = cache.GetLocalToWorldTransform(stage.GetPrimAtPath(paths[pelvis_i]))
         pq = pm.ExtractRotationQuat()
         pq = np.array([pq.GetReal(), *pq.GetImaginary()])
-        grip = np.array(grip_c) + np.array(grip_n) * C.HAND_STANDOFF
-        want_pelvis = grip - quat_rotate(pq, h_reach)
+        want_pelvis = rail_pt - qrot(pq, R["h"])
+        L = arms["left"]
+        L["target_pelvis"] = qrot(qconj(pq), panel_pt - want_pelvis)
+        art, names, paths, bodies, dofs = start()          # second IK pass for the left arm (fresh state)
+        q0 = art.get_dof_positions().numpy()
+        L["q"], L["h"], L["ik_err"] = ik(L, L["target_pelvis"])
+        timeline.stop()
+        for _ in range(5):
+            app.update()
         delta = want_pelvis - np.array(pm.ExtractTranslation())
-        op = [o for o in UsdGeom.Xformable(grasp_prim).GetOrderedXformOps() if o.GetOpName() == "xformOp:translate"][0]
+        op = [o for o in UsdGeom.Xformable(g1).GetOrderedXformOps() if o.GetOpName() == "xformOp:translate"][0]
         op.Set(op.Get() + Gf.Vec3d(*delta))
-        rec["grasp_g1_translate"] = list(op.Get())
+        rec["g1_translate"] = list(op.Get())
+        rec["ik"] = {s: {"dofs": a["dofs"], "q_rad": a["q"].tolist(), "target_pelvis_m": list(map(float, a["target_pelvis"])),
+                         "achieved_pelvis_m": a["h"].tolist(), "residual_m": a["ik_err"]} for s, a in arms.items()}
+        rec["worksite"] = {"rail_pt": rail_pt.tolist(), "panel_pt": panel_pt.tolist()}
+
+        # ---- feed-forward placement: the arm reach pushes the floating body back (reaction), so run short trial
+        #      reaches and shift the start pose by the measured miss until the closest approach is within 1 cm ----
+        def trial():
+            art_, _, _, bodies_, _ = start()
+            n_ = art_.num_dofs
+            art_.set_dof_gains(np.full((1, n_), C.POSTURE_GAINS[0], dtype=np.float32),
+                               np.full((1, n_), C.POSTURE_GAINS[1], dtype=np.float32))
+            qs = art_.get_dof_positions().numpy()
+            art_.set_dof_velocities(np.zeros((1, n_), dtype=np.float32))
+            art_.set_velocities(linear_velocities=[list(-n * C.APPROACH_V)], angular_velocities=[[0, 0, 0]])
+            best = (1e9, None)
+            for k in range(round((R["t"][1] + 0.3) / phys["dt_s"])):
+                u = smooth((k * phys["dt_s"] - R["t"][0]) / (R["t"][1] - R["t"][0]))
+                q = qs.copy()
+                q[0, R["idx"]] = qs[0, R["idx"]] + u * (R["q"] - qs[0, R["idx"]])
+                art_.set_dof_position_targets(q)
+                SimulationManager.step(steps=1)
+                hand = bodies_.get_world_poses()[0].numpy().astype(float)[R["hand_i"]]
+                d = float(np.linalg.norm(hand - rail_pt))
+                if d < best[0]:
+                    best = (d, hand - rail_pt)
+            timeline.stop()
+            for _ in range(5):
+                app.update()
+            return best
+
+        rec["placement_trials_closest_m"] = []
+        for _ in range(4):
+            d, miss = trial()
+            rec["placement_trials_closest_m"].append(d)
+            if d < 0.01:
+                break
+            op.Set(op.Get() - Gf.Vec3d(*miss))
+        rec["g1_translate"] = list(op.Get())
 
         # ---- pass 2: the recorded run ----
-        A = start()
-        kp, kd = C.HOLD_GAINS
-        tb = CONFIG["test_b"]
-        for key, a in A.items():
-            n = a["art"].num_dofs
-            a["art"].set_dof_gains(np.full((1, n), kp, dtype=np.float32), np.full((1, n), kd, dtype=np.float32))
-            a["q0"] = a["art"].get_dof_positions().numpy()
-            a["art"].set_dof_position_targets(a["q0"])
-            a["art"].set_dof_velocities(np.zeros((1, n), dtype=np.float32))
-        A["hold"]["art"].set_velocities(linear_velocities=[[0, 0, 0]], angular_velocities=[[0, 0, 0]])
-        A["grasp"]["art"].set_velocities(linear_velocities=[list(-np.array(grip_n) * C.APPROACH_V)],
-                                         angular_velocities=[[0, 0, 0]])
-        hd = A["hold"]
-        driven = [hd["dofs"].index(f"{s}_{j}_joint") for s in ("left", "right")
-                  for j in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow")]
-        masses = hd["art"].get_link_masses().numpy()[0].astype(np.float64)
-        inertias = hd["art"].get_link_inertias().numpy()[0].reshape(-1, 3, 3).astype(np.float64)
-        coms = hd["art"].get_link_coms()[0].numpy()[0].astype(np.float64)
-        gp_i = A["grasp"]["names"].index("pelvis")
-        hp_i = hd["names"].index("pelvis")
-
+        art, names, paths, bodies, dofs = start()
+        kp, kd = C.POSTURE_GAINS
+        ndof = art.num_dofs
+        art.set_dof_gains(np.full((1, ndof), kp, dtype=np.float32), np.full((1, ndof), kd, dtype=np.float32))
+        q0 = art.get_dof_positions().numpy()
+        art.set_dof_position_targets(q0)
+        art.set_dof_velocities(np.zeros((1, ndof), dtype=np.float32))
+        art.set_velocities(linear_velocities=[list(-n * C.APPROACH_V)], angular_velocities=[[0, 0, 0]])
         dt = phys["dt_s"]
         nsteps = round(C.DURATION / dt)
         every = round(1.0 / (C.FPS * dt))
-        F = {"hold_paths": hd["paths"], "grasp_paths": A["grasp"]["paths"], "hold": [], "grasp": [], "t": [],
-             "hand_dist": [], "grasped": [], "hold_rot_deg": []}
-        L, Lref = [], []
+        F = {"paths": paths, "poses": [], "t": [], "phase": [], "right_d": [], "left_d": []}
         grasp = {"status": "NOT_ACHIEVED", "t_s": None}
-        hq0 = None
         post = []
+        prev_rd = None
         for step in range(nsteps + 1):
             t = step * dt
-            tq = hd["q0"].copy()
-            tq[0, driven] = hd["q0"][0, driven] + tb["amplitude_rad"] * math.sin(2 * math.pi * tb["frequency_hz"] * t)
-            hd["art"].set_dof_position_targets(tq)
-            gq = A["grasp"]["q0"].copy()
-            a_ = smooth((t - C.REACH_T[0]) / (C.REACH_T[1] - C.REACH_T[0]))
-            gq[0, ri] = A["grasp"]["q0"][0, ri] + a_ * (qr - A["grasp"]["q0"][0, ri])
-            A["grasp"]["art"].set_dof_position_targets(gq)
-            m = measure(hd["bodies"], masses, inertias, coms, hd["names"])
-            L.append(m["L"]); Lref.append(m["Lref"])
-            gpos, gquat = (x.numpy().astype(float) for x in A["grasp"]["bodies"].get_world_poses())
-            hand = gpos[hand_i]
-            s_ = float(np.clip(np.dot(hand - np.array(grip_c), np.array(grip_axis)), -grip_half, grip_half))
-            dist = float(np.linalg.norm(hand - (np.array(grip_c) + s_ * np.array(grip_axis))))
-            if grasp["status"] != "ACHIEVED" and dist <= C.CAPTURE_R + C.HAND_STANDOFF:
-                j = UsdPhysics.FixedJoint.Define(stage, "/World/Actors/G1_Grasp_Constraint")
-                j.CreateBody1Rel().SetTargets([A["grasp"]["paths"][hand_i]])
-                q = gquat[hand_i]
-                j.CreateLocalPos0Attr(Gf.Vec3f(*hand))
-                j.CreateLocalRot0Attr(Gf.Quatf(float(q[0]), float(q[1]), float(q[2]), float(q[3])))
+            q = q0.copy()
+            for a in arms.values():
+                u = smooth((t - a["t"][0]) / (a["t"][1] - a["t"][0]))
+                q[0, a["idx"]] = q0[0, a["idx"]] + u * (a["q"] - q0[0, a["idx"]])
+            art.set_dof_position_targets(q)
+            pos, quat = (x.numpy().astype(float) for x in bodies.get_world_poses())
+            rh, lh = pos[R["hand_i"]], pos[L["hand_i"]]
+            rd, ld = float(np.linalg.norm(rh - rail_pt)), float(np.linalg.norm(lh - panel_pt))
+            if grasp["status"] != "ACHIEVED" and prev_rd is not None and prev_rd <= C.CAPTURE_R and rd > prev_rd:
+                j = UsdPhysics.FixedJoint.Define(stage, "/World/Actors/G1_RightHand_Anchor")
+                j.CreateBody1Rel().SetTargets([paths[R["hand_i"]]])
+                hq = quat[R["hand_i"]]
+                j.CreateLocalPos0Attr(Gf.Vec3f(*rh))
+                j.CreateLocalRot0Attr(Gf.Quatf(*[float(v) for v in hq]))
                 j.CreateLocalPos1Attr(Gf.Vec3f(0, 0, 0))
                 j.CreateLocalRot1Attr(Gf.Quatf(1, 0, 0, 0))
-                grasp = {"status": "ACHIEVED", "t_s": round(t, 4), "hand_pos_m": hand.tolist(),
-                         "hand_to_grip_axis_m": dist}
+                grasp = {"status": "ACHIEVED", "t_s": round(t, 4), "hand_pos_m": rh.tolist(), "hand_to_plan_m": rd}
             if grasp["status"] == "ACHIEVED":
-                post.append(float(np.linalg.norm(hand - np.array(grasp["hand_pos_m"]))))
+                post.append(float(np.linalg.norm(rh - np.array(grasp["hand_pos_m"]))))
+            prev_rd = rd
             if step % every == 0:
-                hpos, hquat = (x.numpy().astype(float) for x in hd["bodies"].get_world_poses())
-                if hq0 is None:
-                    hq0 = hquat[hp_i]
-                F["hold"].append([hpos.round(6).tolist(), hquat.round(7).tolist()])
-                F["grasp"].append([gpos.round(6).tolist(), gquat.round(7).tolist()])
+                if grasp["status"] != "ACHIEVED":
+                    phase = "drift" if t < C.ARMS["right"]["t"][0] else "reach_rail"
+                elif t < C.ARMS["left"]["t"][0]:
+                    phase = "anchored"
+                elif t < C.ARMS["left"]["t"][1]:
+                    phase = "reach_panel"
+                else:
+                    phase = "at_panel"
+                F["poses"].append([pos.round(6).tolist(), quat.round(7).tolist()])
                 F["t"].append(round(t, 6))
-                F["hand_dist"].append(dist)
-                F["grasped"].append(grasp["status"] == "ACHIEVED")
-                F["hold_rot_deg"].append(math.degrees(2 * math.acos(min(1.0, abs(float(np.dot(hq0, hquat[hp_i])))))))
+                F["phase"].append(phase)
+                F["right_d"].append(rd)
+                F["left_d"].append(ld)
             if step < nsteps:
                 SimulationManager.step(steps=1)
         timeline.stop()
-        L = np.linalg.norm(np.asarray(L), axis=1)
-        lref = max(Lref)
-        ratio = float(L.max() / lref)
-        rec["hold"] = {"angular_error_ratio": ratio, "angular_tolerance": tb["max_angular_momentum_fraction_of_lref"],
-                       "status": "PASS" if ratio <= tb["max_angular_momentum_fraction_of_lref"] else "FAIL",
-                       "drive": f"all {hd['art'].num_dofs} DOFs PD {kp}/{kd}; arms add the gate Test B sine",
-                       "max_pelvis_rotation_deg": max(F["hold_rot_deg"]),
-                       "running_ratio": [float(L[:i * every + 1].max() / lref) for i in range(len(F["t"]))],
-                       "note": "not the gate condition (gate drives only the arms); reported, not a gate verdict"}
         grasp["post_grasp_hand_drift_max_m"] = max(post) if post else None
-        grasp["min_hand_to_grip_axis_m"] = min(F["hand_dist"])
         rec["grasp"] = grasp
+        rec["left_hand_to_panel_point_m"] = {"min": min(F["left_d"]), "final": F["left_d"][-1]}
         rec["frames"] = F
-        print(json.dumps({k: v for k, v in rec.items() if k not in ("frames", "hold")}
-                         | {"hold": {k: v for k, v in rec["hold"].items() if k != "running_ratio"}}), flush=True)
+        print(json.dumps({k: v for k, v in rec.items() if k != "frames"}), flush=True)
     except Exception as exc:
         rec["error"] = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()

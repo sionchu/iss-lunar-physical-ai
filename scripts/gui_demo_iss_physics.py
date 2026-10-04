@@ -23,7 +23,10 @@ import omni.usd
 from omni.kit.viewport.utility import get_active_viewport
 from pxr import Gf, PhysxSchema, Usd, UsdGeom, UsdPhysics
 
-ROOT = Path(r"D:\Workspace\06_Research\iss-lunar-physical-ai")
+try:
+    ROOT = Path(__file__).resolve().parents[1]
+except NameError:          # some Kit --exec paths do not define __file__; launch from the repo root
+    ROOT = Path.cwd()
 sys.path.insert(0, str(ROOT / "scripts"))
 import gui_demo_iss_microlab as gm  # noqa: E402  (window pinning, cursor, capture helpers)
 import iss_physics_common as C  # noqa: E402

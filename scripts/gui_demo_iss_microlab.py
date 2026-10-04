@@ -23,8 +23,8 @@ from pxr import Gf, UsdGeom
 
 try:
     ROOT = Path(__file__).resolve().parents[1]
-except NameError:          # some Kit --exec paths do not define __file__
-    ROOT = Path(r"D:\Workspace\06_Research\iss-lunar-physical-ai")
+except NameError:          # some Kit --exec paths do not define __file__; launch from the repo root
+    ROOT = Path.cwd()
 SCENE = ROOT / "scenes" / "iss_microlab_v0.usda"
 OUT = ROOT / "outputs" / "iss_microlab_v0"
 FFMPEG = shutil.which("ffmpeg") or str(Path.home() / "AppData/Local/Microsoft/WinGet/Packages/"

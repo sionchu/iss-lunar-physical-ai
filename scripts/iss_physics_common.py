@@ -4,6 +4,7 @@ One PhysX G1 performs an IVA worksite task: drift to Handrail_B, anchor with the
 grasp, not finger contact), then reach the left hand to the maintenance panel (no contact). R2 appears only as the
 S1.1 kinematic clip. Used by iss_physics_record.py and iss_physics_render.py.
 """
+import os
 from pathlib import Path
 
 from pxr import Gf, UsdGeom, UsdPhysics
@@ -12,7 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCENE = ROOT / "scenes" / "iss_microlab_v0.usda"
 OUT = ROOT / "outputs" / "iss_physics"
 GATE_CONFIG = ROOT / "configs" / "iss_v0_momentum_v3.json"
-G1_URDF = Path(r"C:\Users\getch\Documents\Codex\2026-09-24\robotfit-assets\unitree_ros\robots\g1_description\g1_29dof.urdf")
+# Unitree G1 from unitreerobotics/unitree_ros @ ccfc6fd (BSD-3-Clause), copied into gitignored assets/raw/;
+# override with the ISS_G1_URDF environment variable. Expected SHA-256 e1dc8936... (see docs/ISS_V0_MOMENTUM_GATE.md).
+G1_URDF = Path(os.environ.get("ISS_G1_URDF",
+                              ROOT / "assets" / "raw" / "unitree_ros" / "robots" / "g1_description" / "g1_29dof.urdf"))
 FPS, DURATION = 30, 10.0
 
 G1_PATH = "/World/Actors/G1"

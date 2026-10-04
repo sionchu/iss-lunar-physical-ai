@@ -156,6 +156,8 @@ Build only:
 Do **not** present the R2 motion as validated dynamics. In parallel, keep the zero-g actor gate as the physics track. Merge the tracks only after a candidate passes.
 ## S1 Implementation Receipt — ISS Micro-Lab v0 (2026-10-04)
 
+> Superseded for the environment, R2 motion and video by **S1.1** below. This receipt is kept as the record of commit `20499db` (authored-primitive bay); its provenance statements apply to that commit only.
+
 **Verdict: S1 scene-contract audit PASS (visual track only).** Nothing in this slice is a physics validation. R2 appears as `KINEMATIC / VISUAL`; the zero-g gate verdicts above are unchanged (calibration PASS, R2 reset-safe Test B FAIL, G1 reset-safe Test B FAIL).
 
 | Item | Record |
@@ -241,6 +243,50 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - R2 pose is authored by IK on visual links only; no self-collision check beyond visual inspection; hand-to-handrail contact is intentionally not authored.
 - Collision proxies were not exercised in a physics run in S1; the affordance metadata is a placeholder for S3 (handrail transfer), not a validated grasp model.
 - RTX path-traced appearance depends on driver/GPU; renders are not bit-reproducible across machines.
+
+## S1.1 Receipt — NASA US Lab interior + R2 kinematic clip + Isaac Sim GUI walkthrough (2026-10-04)
+
+**Verdict: S1.1 scene-contract audit PASS (visual track only).** S1.1 replaces the authored-primitive bay of S1 (commit `20499db`, receipt above kept as history) with the NASA US Lab interior mesh, keeps the truth-layer contract, and adds an authored R2 keyframe clip plus a scripted Isaac Sim GUI walkthrough. Still nothing here is a physics validation; the zero-g gate verdicts are unchanged.
+
+### What changed vs S1
+| Item | S1 (`20499db`) | S1.1 |
+| --- | --- | --- |
+| Visual environment | 195 authored primitives, ISS-inspired | `us_lab.usd` (NASA US Lab interior) + 2 × `handrail_30.usd`, referenced, not copied into git |
+| Aisle used for collision/clearance | authored 2.2 m box | measured from the US Lab mesh: half-width 1.00 m, half-height 0.94 m, corner limit \|y\|+\|z\| ≤ 1.55 m, rack zone x ±3.30 m, hatch 1.27 m |
+| Collision proxies | 29 | 33 primitive proxies (walls, 45° corner standoffs, bulkheads with hatch, hatch tunnels, handrails, panel) |
+| R2 | one static IK pose | 8 s keyframe clip (5 keys, IK per key, smoothstep, sampled every frame 0–240 @ 30 fps): drifts aft along the aisle and reaches for Handrail_B |
+| Video | 10 s, static pose, dolly | 12 s: visual 0–8 s (clip plays), collision, affordance, visual |
+| Isaac Sim UI | none shown | `scripts/gui_demo_iss_microlab.py`: real Isaac Sim GUI screen recording |
+
+### Provenance (S1.1)
+- **ISS interior + handrails: NASA, Apache-2.0.** Source repo `https://github.com/nasa/astrobee_media` at `1cb0620121099cc848f5a3db480464188dc91ea3` (2023-03-20); license per `astrobee_iss/package.xml`. Upstreams named by that repo: NASA 3D Resources "ISS Internal" (IGOAL) for the interior, `nasa-jsc-robotics/r2_gazebo` for the handrails.
+  - `astrobee_iss/meshes/us_lab.dae` SHA-256 `1b54da04c84139eeb05944c92ef7bbf3cdaf6b7b92d0a3ac178ea911f0cc71aa`
+  - `astrobee_handrail_30/meshes/handrail_30.dae` SHA-256 `0dc019783d46a353e4daea0cf0b664a8048c2d99138bef378f8588866bb28c5a`
+- Converted by `scripts/import_iss_media.py` (`omni.kit.asset_converter`, metres) to `assets/cache/iss_media/` with `import_report.json`. `assets/raw/` and `assets/cache/` are gitignored; a fresh clone must sparse-clone `nasa/astrobee_media` into `assets/raw/astrobee_media` and run the importer.
+- US Lab placement = the Astrobee simulator's own transform (rotateX 90°, scale 1.0858), recentred at x = 4.2 m. The appearance is a game-grade texture-baked mesh: this is **not** a high-fidelity or certified ISS digital twin.
+- The aisle numbers above were measured from mesh vertices; only one corner was cleanly measurable and its value was applied to all four (approximation, recorded as such).
+- R2 provenance unchanged from S1 (URDF / USD SHA-256 above). Same scene-layer-only physics removal and insignia override.
+
+### R2 motion = authored animation
+- `iss:classification = KINEMATIC_VISUAL_ONLY`, `iss:clip` describes the clip. Poses come from coordinate-descent IK on visual links within URDF limits; there are no forces, contacts or dynamics. Clip IK residuals: ≤ 0.025 m for all effectors except the left hand at 6.0 s / 8.0 s (0.067 / 0.058 m short of the grip; the hand is near the rail, not on it). No grasp or contact is claimed.
+
+### Isaac Sim GUI walkthrough (scripted)
+`C:\isaacsim\isaac-sim.bat --exec "scripts/gui_demo_iss_microlab.py"` opens the scene in the Isaac Sim GUI, pins its window on top and records only that window's client area with ffmpeg `gdigrab` (cursor visible; no recording if Isaac Sim is not in the foreground) to `outputs/iss_microlab_v0/gui_walkthrough_raw.mp4`. The viewport, Stage/Property/Console panels, timeline playback and variant switching are the real Isaac Sim UI; **the cursor path and the selection/commands are scripted**, and the Console lines are written by the script (`[iss-s1] …`). It is a reproducible demo, not a recording of manual operation or of a physics run.
+
+### Verification results (S1.1)
+- `check_iss_microlab.py` (pxr): **30/30 PASS**. Includes: visual layer = referenced NASA meshes (`us_lab.usd` + 2 × `handrail_30.usd`), 5 visual gprims without CollisionAPI, 33 independent collision proxies with CollisionAPI; handrail grip 0.70 m, section 34 × 25 mm, assembly 0.784 m (NASA mesh dimensions; checker range 0.30–0.90 m); clip authored (241 root samples, end time code 240, 30 fps); conservative AABB clearance to the measured aisle > 0 at frames 0–240 step 10 + default (min 0.014 m, `r2cl_ext_bone2` @ 240); R2 x within rack zone [0.025, 2.989] m; no R2 overlap with handrail/panel proxies; camera inside the aisle; 9 lights; per-layer visibility; `configs/` unchanged vs HEAD.
+- `check_iss_microlab.py --isaac`: **30/30 PASS** (same checks after opening the scene in Isaac Sim 6.0.1 Kit, headless).
+- Renders: `--mode stills --subframes 64` and `--mode video --subframes 48` exit 0. ffprobe on `iss_microlab_v0_linkedin_1080p30.mp4`: h264, 1920 × 1080, yuv420p, 30 fps, 360 frames, 12.000 s.
+- GUI walkthrough: `gui_walkthrough_raw.mp4` 2560 × 1494 (Kit client area only), 33.6 s; `gui_walkthrough_1080p30.mp4` is the same scaled/padded to 1920 × 1080; `iss_microlab_v0_s11_render_plus_gui_1080p30.mp4` (45.6 s) = rendered clip followed by the GUI walkthrough.
+- All renders, recordings and both checks above were produced from the same build output, `scenes/iss_microlab_v0.usda` as written by the build script (LF line endings) SHA-256 `417d013f79b8af345d61bf955e53d92ae1348e7bf74a4138c58f1661c3268d74` (build is deterministic: two rebuilds gave the same hash).
+- Visual QA (images and frames decoded from the MP4s actually inspected): hero/layer stills; video frames every 30 frames; collision↔visual cross-fade frame 240 shows the handrail proxies on the NASA rails and the hatch proxy in the hatch; GUI recording sheet (every 2.7 s) shows R2 selected in Stage with Property values, Console trace, clip playing, collision and affordance layers, and the session-camera close-up.
+- Defects found and fixed in S1.1: (1) R2 head 0.10 m into the overhead and legs past the rack zone → keys re-posed, start at x = 2.0 m; (2) the first GUI recording captured the full desktop instead of only Isaac Sim → deleted; the script now pins the Kit window on top, refuses to record unless it is in the foreground, and captures only its client area; (3) window-title capture returned a frozen Vulkan viewport → capture the composed screen region of the client area instead; (4) variant switches during the walkthrough dirtied the scene file in Kit → moved to the session layer (scene file unchanged, mtime verified).
+
+### Known limitations / UNKNOWN (S1.1)
+- Visual and collision are independent: proxies were placed from the measured aisle and inspected visually against the mesh; exact proxy-to-mesh agreement is approximate (corner value applied to all four corners).
+- Handrail mesh orientation (standoff along local +X) was taken from the mesh bbox and visual inspection; the ISS IVA handrail specification itself remains UNKNOWN.
+- R2 self-collision and hand-rail contact are not checked by physics; clearance is a conservative AABB check against the measured aisle every 10 frames.
+- The rendered clip and GUI recording depend on the gitignored NASA media and R2 import being regenerated locally.
 
 ## Claim ladder
 

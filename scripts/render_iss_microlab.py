@@ -36,7 +36,9 @@ from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 from pxr import Gf, UsdGeom  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_iss_microlab import CAMERA, look_at_xform  # noqa: E402
+import omni.timeline  # noqa: E402
+from build_iss_microlab import CAMERA, DURATION, HERO_FRAME, look_at_xform  # noqa: E402
+CLIP = int(DURATION * FPS)
 
 RENDER = {"rendermode": "PathTracing", "spp_per_subframe": 1, "subframes": args.subframes,
           "denoiser": True, "resolution": [W, H], "fstop": 0.0, "motion_blur": False}
@@ -75,9 +77,13 @@ def set_camera(eye, target):
     cam_op.Set(look_at_xform(eye, target))
 
 
-def render(layer, eye=CAMERA["eye"], target=CAMERA["target"]):
+timeline = omni.timeline.get_timeline_interface()
+
+
+def render(layer, eye=CAMERA["eye"], target=CAMERA["target"], frame=HERO_FRAME):
     set_layer(layer)
     set_camera(eye, target)
+    timeline.set_current_time(frame / FPS)   # USD time samples (R2 kinematic clip)
     app.update()
     rep.orchestrator.step(rt_subframes=args.subframes, delta_time=0.0, pause_timeline=True)
     data = rgb.get_data()
@@ -100,7 +106,7 @@ def font(name, size):
 F_TITLE, F_SUB = font("seguisb.ttf", 44), font("segoeui.ttf", 21)  # Segoe has the arrow glyph; Bahnschrift does not
 F_TAG, F_LAYER, F_NOTE = font("bahnschrift.ttf", 19), font("bahnschrift.ttf", 24), font("segoeui.ttf", 19)
 NOTES = {
-    "visual": "Render geometry  ·  ISS-inspired authored bay, not a digital twin",
+    "visual": "Render geometry  ·  NASA US Lab interior mesh (nasa/astrobee_media)  ·  R2 kinematic keyframe clip",
     "collision": "Engineering collision proxies  ·  R2 hidden: no validated collision / physics model",
     "affordance": "Task affordances  ·  graspable handrails  ·  maintenance target  ·  approach waypoint",
 }
@@ -148,24 +154,26 @@ def overlay(img, layer=None, title=1.0, layer_alpha=1.0):
 
 
 def eye_at(t):
-    """Slow, legible push-in: 0.12 m forward, 0.04 m toward the aisle centre; constant target keeps R2 framed."""
+    """Slow, legible push-in: 0.15 m forward, 0.05 m toward the aisle centre; constant target keeps R2 framed."""
     e = CAMERA["eye"]
     u = 0.5 - 0.5 * math.cos(math.pi * t)  # ease in/out
-    return (e[0] + 0.12 * u, e[1] - 0.04 * u, e[2])
+    return (e[0] + 0.15 * u, e[1] - 0.05 * u, e[2])
 
 
 def ramp(f, a, b):
     return min(1.0, max(0.0, (f - a) / float(b - a)))
 
 
-SCHEDULE = [(0, 135, "visual"), (135, 195, "collision"), (195, 255, "affordance"), (255, 300, "visual")]
+SCHEDULE = [(0, 240, "visual"), (240, 285, "collision"), (285, 330, "affordance"), (330, 360, "visual")]
+BOUNDS = (240, 285, 330)
+N_FRAMES = 360   # 12 s: 8 s R2 clip in the visual layer, then truth layers, back to visual
 XFADE = 12
 
 
 def frame_plan(f):
     """Return [(layer, weight)], title alpha, layer-label alpha, label layer for clip frame f (0..299)."""
     layers = None
-    for b in (135, 195, 255):
+    for b in BOUNDS:
         if b - XFADE // 2 <= f < b + XFADE // 2:
             w = (f - (b - XFADE // 2) + 0.5) / XFADE
             before = [n for s0, s1, n in SCHEDULE if s0 <= b - 1 < s1][0]
@@ -173,8 +181,8 @@ def frame_plan(f):
             layers = [(before, 1 - w), (after, w)]
     if layers is None:
         layers = [([n for s0, s1, n in SCHEDULE if s0 <= f < s1][0], 1.0)]
-    title = 1.0 - ramp(f, 60, 75) + ramp(f, 258, 273)
-    label = ramp(f, 75, 90) * (1.0 - ramp(f, 252, 264))
+    title = 1.0 - ramp(f, 60, 75) + ramp(f, 335, 350)
+    label = ramp(f, 75, 90) * (1.0 - ramp(f, 332, 344))
     dom = max(layers, key=lambda lw: lw[1])[0]
     return layers, min(title, 1.0), label, dom
 
@@ -186,6 +194,7 @@ def main():
     if args.mode == "quick":
         for layer in ("visual", "collision", "affordance"):
             render(layer).save(OUT / f"quick_{layer}.png")
+        render("visual", frame=0).save(OUT / "quick_visual_f000.png")
     elif args.mode == "stills":
         vis = render("visual")
         vis.save(OUT / "visual_clean.png")
@@ -199,13 +208,13 @@ def main():
         frames = OUT / "frames"
         shutil.rmtree(frames, ignore_errors=True)
         frames.mkdir(parents=True)
-        n = 10 * FPS
+        n = N_FRAMES
         for f in range(n):
             eye = eye_at(f / (n - 1))
             layers, title, label, dom = frame_plan(f)
             acc = None
             for layer, w in layers:
-                img = np.asarray(render(layer, eye), dtype=np.float32)
+                img = np.asarray(render(layer, eye, frame=min(f, CLIP)), dtype=np.float32)
                 acc = img * w if acc is None else acc + img * w
             img = Image.fromarray(np.clip(acc, 0, 255).astype(np.uint8))
             overlay(img, dom, title=title, layer_alpha=label).save(frames / f"f{f:04d}.png")

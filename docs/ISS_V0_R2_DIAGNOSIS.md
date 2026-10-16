@@ -8,6 +8,45 @@ The sequence sensitivity identified by this study was subsequently confirmed as 
 
 Accordingly, every ablation value below—including V9's historical 0.007721 PASS—belongs to the obsolete sequence-matched A→B initialization. The study remains useful for locating numerical sensitivities and motivating asset/inertia investigation, but its variant verdicts are **not current gate evidence**. V9 must not be carried into the official config, and any future use of these ablations requires rerunning them under the reset-safe lifecycle.
 
+## 2026-10-15 V-dyn / V-lim study under gate v3 (diagnostic, Test B only)
+
+**Verdict: R2 still fails Test B in every variant. It stays `KINEMATIC_VISUAL_ONLY`.** Joint limits explain part of the residual, but not all of it. The upstream dynamics model makes it worse. Gate v3 (`configs/iss_v0_momentum_v3.json`) and its thresholds were not changed. Results are in ignored `outputs/fail_fix/`.
+
+**Setup:**
+- Reset-safe harness, `--test-b-only` (V-dyn also ran A→B).
+- `scripts/iss_v0_momentum_test.py` now records every DOF's position against its PhysX limits at test start (`initial_state.joint_limits`). With a diagnostic config it can also apply a start-pose rule (`start_pose_rule`) and centre the sine on the start pose (`sine_center`). Both are absent in every gate config, so gate behaviour is unchanged. The v3 baseline re-run reproduced 0.019131 exactly.
+
+**Finding: q = 0 is not a valid start pose for R2.**
+- Both arms' `joint2` limits are ±[0.3318, 4.5028] (zero excluded), and `joint3` is [−2.793, 0.0] (zero is the limit).
+- After the harness warm-up step, PhysX has projected both `joint2` onto their limits (|q| = 0.3318). That projection kicked `joint0` by ±0.10 rad and `joint4` by ±0.18 rad. Right `joint3` then sits at its limit.
+- The gate sine (target = 0.5 sin ωt, about 0) therefore commands `joint2` mostly outside its range, and `joint3` beyond its limit half of the time.
+- This is why the R2 pre-test state depended on solver settings in the v3 ablation.
+- G1 does not have this problem: q = 0 is inside all its limits, and its hash is solver-independent.
+
+| Run | Derivative | Test B condition | B linear | B angular (≤ 0.01) | B |
+| --- | --- | --- | ---: | ---: | --- |
+| v3 baseline | `r2c6_zero_g` (74 DOF) | gate | 0.0000507 | 0.019131 | FAIL |
+| V-lim-a | `r2c6_zero_g` | start pose: DOFs out of/at a limit moved 0.05 rad inside; targets still about 0 (cross limits) | 0.0000621 | 0.024488 | FAIL |
+| V-lim-b | `r2c6_zero_g` | start inside limits and the whole sine inside limits (driven centres joint1 −0.121, joint2 ∓0.882, joint3 −0.55 rad) | 0.0000293 | **0.011041** | FAIL |
+| V-dyn A→B | `r2c6_dynamics_zero_g` (32 DOF) | gate | 0.000144 | 0.028552 | FAIL (A PASS: 0.000188 / 0.00287) |
+| V-dyn B-only | `r2c6_dynamics_zero_g` | gate | 0.000144 | 0.028552 | FAIL (identical, hash `8104d74c…`) |
+| V-dyn + V-lim-b | `r2c6_dynamics_zero_g` | as V-lim-b | 0.0000095 | 0.058814 | FAIL |
+
+- **V-dyn derivative:** upstream `r2c6_dynamics.urdf` (same `gkjohnson/nasa-urdf-robots@1f89ecb`, SHA-256 `cdc4c601…`). It was built with the same rules: `make_r2_zero_g_derivative.py --source …/r2c6_dynamics.urdf` → `outputs/r2_derived/r2c6_dynamics_zero_g.urdf`, SHA-256 `db475d9c…`, with 1 inertia change and 1 fallback sphere. The default derivative still hashes `282152ee…`.
+- **What else differs in V-dyn:** it is *not* only the 42 removed finger and leg-gripper joints. Its wrist pitch/yaw limits and origins also differ. About 2.49 kg of hand mass is dropped, not lumped (212.99 vs 215.48 kg source). ARGOS is absent from the source.
+- **Driven-chain conditioning:** `scripts/r2_chain_ratios.py`, result in `outputs/fail_fix/r2_chain_ratios.json`. Child mass divided by the lightest descendant mass:
+  - current derivative: 7,070 / 4,728 / 4,903 / 2,338 for joint0–3, both sides; smallest-principal-inertia ratio up to 494,221;
+  - V-dyn, left: unchanged (0.001 kg `left_index_base` remains);
+  - V-dyn, right: 707 / 473 / 490 / 234; inertia ratio 46–231.
+
+  Better conditioning did not lower the residual, so the light hand links are not the explanation.
+
+**Conclusion:**
+- Driving the arms into their limits accounts for roughly 40 % of the v3 residual. Keeping the commanded motion inside the limits lowers it from 0.0191 to 0.0110 on the current derivative.
+- The remaining residual is not explained by finger joints or mass ratios (V-dyn is worse in both conditions). Its cause is UNKNOWN.
+- V-lim-b also changes the Test B definition (start pose and sine centre). A pass under it would not have been a v3 pass anyway.
+- Physically justified next steps: a documented R2 nominal start pose from NASA sources, and a reset-safe check of limit/contact impulses in the solver. NOT_RUN.
+
 ## Reproduction and measurement
 
 The then-current `scripts/iss_v0_momentum_test.py` at diagnostic commit `0719cca`, with `outputs/r2_derived/r2c6_zero_g.urdf`, reproduced Test A **PASS** (linear ratio 0.000067002; angular ratio 0.002325688) and the sequence-dependent Test B **FAIL** (linear ratio **0.000041366**; angular ratio **0.013671235**, limit 0.01). Its structured result is `outputs/diagnostics/baseline_repro.json`. The instrumented A-then-B baseline reproduced the same ratios exactly. Total angular momentum is measured about the instantaneous system COM using the corrected PhysX tensor interpretation in `scripts/momentum_measure.py`.

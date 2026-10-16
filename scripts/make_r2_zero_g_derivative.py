@@ -98,16 +98,24 @@ def mesh_bbox(link):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, default=SOURCE,
+                        help="upstream R2 URDF in the same package (default r2c6.urdf); e.g. r2c6_dynamics.urdf")
     parser.add_argument("--remove-world-ref", action="store_true",
                         help="also remove massless world_ref and its fixed joint; emit a separate floating-root derivative")
     args = parser.parse_args()
-    dest = (DEST.with_name("r2c6_zero_g_noworldref.urdf") if args.remove_world_ref else DEST)
-    changes = dest.with_name("changes_noworldref.json" if args.remove_world_ref else "changes.json")
-    tree = ET.parse(SOURCE)
+    source = args.source.resolve()
+    stem = "r2c6" if source == SOURCE else source.stem
+    dest = DEST.with_name(f"{stem}_zero_g{'_noworldref' if args.remove_world_ref else ''}.urdf")
+    changes = dest.with_name(("changes" if source == SOURCE else f"changes_{stem}")
+                             + ("_noworldref" if args.remove_world_ref else "") + ".json")
+    tree = ET.parse(source)
     robot = tree.getroot()
     removed = []
     for tag, name in (("joint", SUPPORT_JOINT), ("link", SUPPORT_LINK)):
         node = next((x for x in robot.findall(tag) if x.get("name") == name), None)
+        if node is None and source != SOURCE:   # e.g. r2c6_dynamics.urdf has no ARGOS support at all
+            removed.append({"type": tag, "name": name, "absent_in_source": True})
+            continue
         if node is None:
             raise ValueError(f"Expected {tag} absent: {name}")
         if tag == "joint" and (node.get("type") != "fixed" or node.find("parent").get("link") != "r2/pelvis" or node.find("child").get("link") != SUPPORT_LINK):
@@ -162,15 +170,15 @@ def main():
     dest.parent.mkdir(parents=True, exist_ok=True)
     ET.indent(tree, space="  ")
     tree.write(dest, encoding="utf-8", xml_declaration=True)
-    result = {"source": str(SOURCE.relative_to(ROOT)).replace("\\", "/"),
-              "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+    result = {"source": str(source.relative_to(ROOT)).replace("\\", "/"),
+              "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
               "derivative": str(dest.relative_to(ROOT)).replace("\\", "/"),
               "date": "2026-09-30", "removed": removed, "inertia_changes": edits,
               "remove_world_ref": args.remove_world_ref,
               "inertia_change_count": len(edits),
               "fallback_sphere_count": sum(x["method"] == "fallback_sphere" for x in edits)}
     changes.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(f"Removed {len(removed)} ARGOS elements; changed {len(edits)} inertias; fallback spheres {result['fallback_sphere_count']}")
+    print(f"Removed {sum(not x.get('absent_in_source') for x in removed)} elements; changed {len(edits)} inertias; fallback spheres {result['fallback_sphere_count']}")
     print(f"URDF: {dest}\nChanges: {changes}")
 
 

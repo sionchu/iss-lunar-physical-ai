@@ -1,0 +1,2524 @@
+#usda 1.0
+(
+    "Full ISS interior v0 (USOS modules in nasa/astrobee_media). Visual: NASA meshes posed by astrobee_iss/urdf/model.urdf. Collision: US Lab S1 proxies + triangle meshes elsewhere. Not a digital twin. Built by scripts/build_iss_full.py"
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World" (
+    variants = {
+        string truthLayer = "visual"
+    }
+    prepend variantSets = "truthLayer"
+)
+{
+    def Xform "Environment"
+    {
+        def Xform "ISS"
+        {
+            custom string iss:frame = "children are in the Astrobee ISS world frame (x fwd, y starboard, z nadir); this prim rotates it 180 deg about x so scene +Z = zenith"
+            custom string[] iss:knownGaps = ["PMM Leonardo", "Quest airlock", "JEM ELM-PS logistics module", "Russian segment (FGB/SM/MRM/MLM)", "PMA-2/PMA-3 and visiting vehicles", "ISS handrail layout outside the US Lab (no public source)"]
+            custom string iss:license = "astrobee_iss/package.xml: Apache-2.0; astrobee_media readme: all multimedia covered by NASA Media Usage Guidelines; interior meshes from NASA 3D Resources ISS Internal (IGOAL). Governing terms UNKNOWN."
+            custom string iss:sourceUrdf = "nasa/astrobee_media@1cb0620 astrobee_iss/urdf/model.urdf sha256 38a1de2fb42a65d7cb98fb1a59da0bcd1d5d8cf2439db65fe3b689fd60a94cda"
+            float xformOp:rotateX:stationToScene = 180
+            uniform token[] xformOpOrder = ["xformOp:rotateX:stationToScene"]
+
+            def Xform "Visual"
+            {
+                def Xform "Node1" (
+                    prepend references = @../assets/cache/iss_media/node_1.usd@
+                )
+                {
+                    custom string iss:module = "Node 1 Unity"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/node_1.dae"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4630848, -0.0027432, 4.8508666)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "USLab" (
+                    prepend references = @../assets/cache/iss_media/us_lab.usd@
+                )
+                {
+                    custom double3 iss:collisionOriginXyz = (6.4125472, 0.006477, 4.834892)
+                    custom string iss:module = "US Lab Destiny"
+                    custom string iss:originStatus = "UNKNOWN which origin is correct: URDF visual and collision origins differ; visual origin used"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin (collision origin differs; see iss:collisionOriginXyz)"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/us_lab.dae"
+                    float3 xformOp:rotateXYZ = (179.99469, 0, 0)
+                    float3 xformOp:scale = (1.0858, 1.0858, 1.0858)
+                    double3 xformOp:translate = (6.3085472, 0.006477, 4.834892)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Xform "Node2" (
+                    prepend references = @../assets/cache/iss_media/node_2.usd@
+                )
+                {
+                    custom string iss:module = "Node 2 Harmony"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/node_2.dae"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (10.9744206, -0.0112558, 4.8358958)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "Columbus" (
+                    prepend references = @../assets/cache/iss_media/eu_lab.usd@
+                )
+                {
+                    custom string iss:module = "Columbus (ESA)"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/eu_lab.dae"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (10.9325664, 2.3509732, 4.8505872)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "JEM_PM" (
+                    prepend references = @../assets/cache/iss_media/jpm.usd@
+                )
+                {
+                    custom string iss:module = "JEM Pressurized Module Kibo"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/jpm.dae"
+                    float3 xformOp:rotateXYZ = (179.99469, 0, -89.999985)
+                    double3 xformOp:translate = (10.9358938, -2.3364698, 4.8505872)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "Node3" (
+                    prepend references = @../assets/cache/iss_media/node_3.usd@
+                )
+                {
+                    custom string iss:module = "Node 3 Tranquility"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/node_3.dae"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4586144, -6.6356992, 4.8434244)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "Cupola" (
+                    prepend references = @../assets/cache/iss_media/cupola.usd@
+                )
+                {
+                    custom string iss:module = "Cupola"
+                    custom string iss:poseSource = "astrobee_iss/urdf/model.urdf <visual> origin"
+                    custom string iss:sourceMesh = "nasa/astrobee_media@1cb0620 astrobee_iss/meshes/cupola.dae"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4586144, -6.8356992, 6.8434244)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                }
+
+                def Xform "USLab_S1Frame"
+                {
+                    matrix4d xformOp:transform = ( (1.0000000000000002, 0, 0, 0), (0, 0.00009267800580216048, 0.9999999957053934, 0), (0, -0.9999999957053934, 0.00009267800580216048, 0), (2.1085471999999985, 0.006477, 4.834892, 1) )
+                    uniform token[] xformOpOrder = ["xformOp:transform"]
+
+                    def Xform "Handrail_A" (
+                        prepend references = @../assets/cache/iss_media/handrail_30.usd@
+                    )
+                    {
+                        matrix4d xformOp:transform = ( (0, -1, 0, 0), (0, 0, -1, 0), (1, 0, 0, 0), (-1.7, 1, -0.2, 1) )
+                        uniform token[] xformOpOrder = ["xformOp:transform"]
+                    }
+
+                    def Xform "Handrail_B" (
+                        prepend references = @../assets/cache/iss_media/handrail_30.usd@
+                    )
+                    {
+                        matrix4d xformOp:transform = ( (0, 1, 0, 0), (0, 0, 1, 0), (1, 0, 0, 0), (0.4, -1, 0.25, 1) )
+                        uniform token[] xformOpOrder = ["xformOp:transform"]
+                    }
+                }
+            }
+
+            def Xform "Collision"
+            {
+                def Xform "USLab"
+                {
+                    custom string iss:collisionStrategy = "primitive_proxies_S1: authored boxes from the measured S1 aisle (corner value applied to all four corners); S1 hatch caps removed so both hatchways are open"
+                    matrix4d xformOp:transform = ( (1.0000000000000002, 0, 0, 0), (0, 0.00009267800580216048, 0.9999999957053934, 0), (0, -0.9999999957053934, 0.00009267800580216048, 0), (2.1085471999999985, 0.006477, 4.834892, 1) )
+                    uniform token[] xformOpOrder = ["xformOp:transform"]
+
+                    def Cube "WallA" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.05, 1.88)
+                        double3 xformOp:translate = (0, 1.025, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "WallB" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.05, 1.88)
+                        double3 xformOp:translate = (0, -1.025, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "WallC" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (6.6, 2, 0.05)
+                        double3 xformOp:translate = (0, 0, 0.965)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "WallD" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (6.6, 2, 0.05)
+                        double3 xformOp:translate = (0, 0, -0.965)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftBulkhead0" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 2, 0.305)
+                        double3 xformOp:translate = (-3.3249999999999997, 0, 0.7875)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftBulkhead1" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 2, 0.305)
+                        double3 xformOp:translate = (-3.3249999999999997, 0, -0.7875)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftBulkhead2" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 0.365, 1.27)
+                        double3 xformOp:translate = (-3.3249999999999997, 0.8175, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftBulkhead3" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 0.365, 1.27)
+                        double3 xformOp:translate = (-3.3249999999999997, -0.8175, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftHatchway0" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 1.27, 0.02)
+                        double3 xformOp:translate = (-3.75, 0, 0.645)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftHatchway1" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 1.27, 0.02)
+                        double3 xformOp:translate = (-3.75, 0, -0.645)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftHatchway2" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 0.02, 1.27)
+                        double3 xformOp:translate = (-3.75, 0.645, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "AftHatchway3" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 0.02, 1.27)
+                        double3 xformOp:translate = (-3.75, -0.645, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdBulkhead0" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 2, 0.305)
+                        double3 xformOp:translate = (3.3249999999999997, 0, 0.7875)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdBulkhead1" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 2, 0.305)
+                        double3 xformOp:translate = (3.3249999999999997, 0, -0.7875)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdBulkhead2" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 0.365, 1.27)
+                        double3 xformOp:translate = (3.3249999999999997, 0.8175, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdBulkhead3" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.05, 0.365, 1.27)
+                        double3 xformOp:translate = (3.3249999999999997, -0.8175, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdHatchway0" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 1.27, 0.02)
+                        double3 xformOp:translate = (3.75, 0, 0.645)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdHatchway1" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 1.27, 0.02)
+                        double3 xformOp:translate = (3.75, 0, -0.645)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdHatchway2" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 0.02, 1.27)
+                        double3 xformOp:translate = (3.75, 0.645, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "FwdHatchway3" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.9, 0.02, 1.27)
+                        double3 xformOp:translate = (3.75, -0.645, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Standoff_AC" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (-45, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.5515433, 0.05)
+                        double3 xformOp:translate = (0, 0.8226776695296636, 0.7626776695296636)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Standoff_AD" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (-135, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.5515433, 0.05)
+                        double3 xformOp:translate = (0, 0.8226776695296636, -0.7626776695296636)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Standoff_BC" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (45, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.5515433, 0.05)
+                        double3 xformOp:translate = (0, -0.8226776695296636, 0.7626776695296636)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Standoff_BD" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (135, 0, 0)
+                        float3 xformOp:scale = (6.6, 0.5515433, 0.05)
+                        double3 xformOp:translate = (0, -0.8226776695296636, -0.7626776695296636)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Xform "Handrail_A"
+                    {
+                        def Cube "Grip" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.7, 0.025, 0.034)
+                            double3 xformOp:translate = (-1.7, 0.9335, -0.2)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Standoff0" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.04, 0.054, 0.034)
+                            double3 xformOp:translate = (-2.072, 0.973, -0.2)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Standoff1" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.04, 0.054, 0.034)
+                            double3 xformOp:translate = (-1.3279999999999998, 0.973, -0.2)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Handrail_B"
+                    {
+                        def Cube "Grip" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.7, 0.025, 0.034)
+                            double3 xformOp:translate = (0.4, -0.9335, 0.25)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Standoff0" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.04, 0.054, 0.034)
+                            double3 xformOp:translate = (0.028000000000000025, -0.973, 0.25)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Standoff1" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.04, 0.054, 0.034)
+                            double3 xformOp:translate = (0.772, -0.973, 0.25)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Cube "MaintenancePanel" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI"]
+                    )
+                    {
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.4, 0.02, 0.3)
+                        double3 xformOp:translate = (1.25, -0.99, -0.15)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+                }
+
+                def Xform "Node1" (
+                    prepend references = @../assets/cache/iss_media/node_1.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4630848, -0.0027432, 4.8508666)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "Node1_Int_Metal_Hatch_Zenith"
+                    {
+                        over "Untitled_775_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+
+                def Xform "Node2" (
+                    prepend references = @../assets/cache/iss_media/node_2.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (10.9744206, -0.0112558, 4.8358958)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "Node2_Int_Hub_ZNH"
+                    {
+                        over "Untitled_311_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+
+                def Xform "Columbus" (
+                    prepend references = @../assets/cache/iss_media/eu_lab.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (10.9325664, 2.3509732, 4.8505872)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "Module_Connect_004"
+                    {
+                        over "Untitled_472_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+
+                def Xform "JEM_PM" (
+                    prepend references = @../assets/cache/iss_media/jpm.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (179.99469, 0, -89.999985)
+                    double3 xformOp:translate = (10.9358938, -2.3364698, 4.8505872)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "JPM_CollapsedForUnity_Starboard"
+                    {
+                        over "Untitled_518_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+
+                def Xform "Node3" (
+                    prepend references = @../assets/cache/iss_media/node_3.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4586144, -6.6356992, 4.8434244)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "Node3_Int__Bulkhead_SBD"
+                    {
+                        over "Untitled_043_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+
+                def Xform "Cupola" (
+                    prepend references = @../assets/cache/iss_media/cupola.usd@
+                )
+                {
+                    custom string iss:collisionStrategy = "static_triangle_mesh: 1 mesh prim(s) of the interior visual mesh, approximation none (no SDF, no convex decomposition); same pose as visual; collision fidelity UNVALIDATED"
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    double3 xformOp:translate = (-4.4586144, -6.8356992, 6.8434244)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "Cupola_Int_Cabin"
+                    {
+                        over "Untitled_528_mesh" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+                        )
+                        {
+                            uniform token physics:approximation = "none"
+                        }
+                    }
+                }
+            }
+
+            def Xform "Affordances"
+            {
+                def Xform "USLab_S1Frame"
+                {
+                    matrix4d xformOp:transform = ( (1.0000000000000002, 0, 0, 0), (0, 0.00009267800580216048, 0.9999999957053934, 0), (0, -0.9999999957053934, 0.00009267800580216048, 0), (2.1085471999999985, 0.006477, 4.834892, 1) )
+                    uniform token[] xformOpOrder = ["xformOp:transform"]
+
+                    def Cube "Handrail_A_Graspable" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        custom token iss:affordance = "graspable"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/USLab/Handrail_A/Grip>
+                        custom float iss:graspLength_m = 0.64
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/USLab_S1Frame/Handrail_A>
+                        rel material:binding = </World/Looks/AffordanceGraspable>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.644, 0.029, 0.038)
+                        double3 xformOp:translate = (-1.7, 0.9335, -0.2)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Handrail_B_Graspable" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        custom token iss:affordance = "graspable"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/USLab/Handrail_B/Grip>
+                        custom float iss:graspLength_m = 0.64
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/USLab_S1Frame/Handrail_B>
+                        rel material:binding = </World/Looks/AffordanceGraspable>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.644, 0.029, 0.038)
+                        double3 xformOp:translate = (0.4, -0.9335, 0.25)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "MaintenancePanel_Target" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        custom token iss:affordance = "maintenance_target"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/USLab/MaintenancePanel>
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/USLab>
+                        rel material:binding = </World/Looks/AffordanceMaintenance>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.41, 0.004, 0.31)
+                        double3 xformOp:translate = (1.25, -0.978, -0.15)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+                }
+
+                def Cube "Hatch_Node1_USLab" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/USLab>
+                    custom float2 iss:hatchClearOpening_m = (1.26, 1.26)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.0308 m, axial gap 0.2327 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/Node1>,
+                        </World/Environment/ISS/Visual/USLab>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/USLab>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.01, 1.26, 1.26)
+                    double3 xformOp:translate = (-2.2073, 0.0002999999999994074, 4.8386)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Hatch_USLab_Node2" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                    custom float2 iss:hatchClearOpening_m = (1.27, 1.26)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.013 m, axial gap 0.1351 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/USLab>,
+                        </World/Environment/ISS/Visual/Node2>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.01, 1.27, 1.26)
+                    double3 xformOp:translate = (6.3748, -0.0036000000000005923, 4.8368)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Hatch_Node2_Columbus" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Columbus>
+                    custom float2 iss:hatchClearOpening_m = (1.2, 1.2)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.0447 m, axial gap 0.2388 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/Node2>,
+                        </World/Environment/ISS/Visual/Columbus>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Columbus>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (1.2, 0.01, 1.2)
+                    double3 xformOp:translate = (10.9522, 2.2325999999999997, 4.8425)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Hatch_Node2_JEM_PM" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                    custom float2 iss:hatchClearOpening_m = (1.26, 1.26)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.0383 m, axial gap 0.2022 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/Node2>,
+                        </World/Environment/ISS/Visual/JEM_PM>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (1.26, 0.01, 1.26)
+                    double3 xformOp:translate = (10.9532, -2.2341000000000006, 4.8357)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Hatch_Node1_Node3" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                    custom float2 iss:hatchClearOpening_m = (1.21, 1.2)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.0104 m, axial gap 0.4109 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/Node1>,
+                        </World/Environment/ISS/Visual/Node3>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (1.21, 0.01, 1.2)
+                    double3 xformOp:translate = (-4.4619, -2.3444000000000003, 4.8479)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Hatch_Node3_Cupola" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    custom token iss:affordance = "hatch"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Cupola>
+                    custom float2 iss:hatchClearOpening_m = (1.2, 1.2)
+                    custom string iss:measurement = "enclosed line-of-sight opening of both module meshes, 0.5 m slab, 0.01 m raster; centre offset 0.1253 m, axial gap 0.2054 m"
+                    custom rel iss:modules = [
+                        </World/Environment/ISS/Visual/Node3>,
+                        </World/Environment/ISS/Visual/Cupola>,
+                    ]
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Cupola>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (1.2, 1.2, 0.01)
+                    double3 xformOp:translate = (-4.4812, -6.695800000000001, 6.735199999999999)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+            }
+
+            def Xform "Lighting"
+            {
+                def Xform "USLab_S1Frame"
+                {
+                    matrix4d xformOp:transform = ( (1.0000000000000002, 0, 0, 0), (0, 0.00009267800580216048, 0.9999999957053934, 0), (0, -0.9999999957053934, 0.00009267800580216048, 0), (2.1085471999999985, 0.006477, 4.834892, 1) )
+                    uniform token[] xformOpOrder = ["xformOp:transform"]
+
+                    def RectLight "GLA_A0"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (-45, 0, 0)
+                        double3 xformOp:translate = (-2.4, 0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_A1"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (-45, 0, 0)
+                        double3 xformOp:translate = (-0.8, 0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_A2"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (-45, 0, 0)
+                        double3 xformOp:translate = (0.8, 0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_A3"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (-45, 0, 0)
+                        double3 xformOp:translate = (2.4, 0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_B0"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (45, 0, 0)
+                        double3 xformOp:translate = (-2.4, -0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_B1"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (45, 0, 0)
+                        double3 xformOp:translate = (-0.8, -0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_B2"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (45, 0, 0)
+                        double3 xformOp:translate = (0.8, -0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+
+                    def RectLight "GLA_B3"
+                    {
+                        float inputs:colorTemperature = 4800
+                        bool inputs:enableColorTemperature = 1
+                        float inputs:height = 0.12
+                        float inputs:intensity = 9000
+                        float inputs:width = 1
+                        float3 xformOp:rotateXYZ = (45, 0, 0)
+                        double3 xformOp:translate = (2.4, -0.7837867965644035, 0.7237867965644036)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                    }
+                }
+
+                def SphereLight "Node1_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.919330627634165, 0.9173147285525173, 4.854881772941947)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node1_1"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.919330627634165, -0.9289228491579943, 4.854881772941947)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node2_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (8.047300538377142, -0.009910264074065072, 4.844080233629327)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node2_1"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (9.65229457321871, -0.009910264074065072, 4.844080233629327)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node2_2"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (11.257288608060277, -0.009910264074065072, 4.844080233629327)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Columbus_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.932751869087372, 6.872300613721882, 4.413075241224743)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Columbus_1"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.932751869087372, 5.365543216428715, 4.413075241224743)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Columbus_2"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.932751869087372, 3.8587858191355475, 4.413075241224743)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "JEM_PM_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.934269592693392, -4.031018589424511, 4.506804572789621)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "JEM_PM_1"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.934269592693392, -5.726814652944625, 4.506804572789621)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "JEM_PM_2"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.934269592693392, -7.422610716464738, 4.506804572789621)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "JEM_PM_3"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.934269592693392, -9.11840677998485, 4.506804572789621)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "JEM_PM_4"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (10.934269592693392, -10.814202843504964, 4.506804572789621)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node3_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.450780470834223, -4.020524160445896, 4.8512144909032004)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node3_1"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.450780470834223, -5.491221151704385, 4.8512144909032004)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Node3_2"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.450780470834223, -6.961918142962875, 4.8512144909032004)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def SphereLight "Cupola_0"
+                {
+                    float inputs:colorTemperature = 4800
+                    bool inputs:enableColorTemperature = 1
+                    float inputs:intensity = 9000
+                    float inputs:radius = 0.1
+                    bool treatAsPoint = 0
+                    double3 xformOp:translate = (-4.467951304503035, -6.825093691585557, 7.635431275663269)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+            }
+        }
+    }
+
+    def Xform "Actors"
+    {
+    }
+
+    def Xform "Task"
+    {
+        def Xform "Targets"
+        {
+            def Xform "MaintenancePanel"
+            {
+                custom rel iss:affordance = </World/Environment/ISS/Affordances/USLab_S1Frame/MaintenancePanel_Target>
+            }
+        }
+    }
+
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+        float physics:gravityMagnitude = 0
+    }
+
+    def Scope "Looks"
+    {
+        def Material "R2ShellPlain"
+        {
+            token outputs:surface.connect = </World/Looks/R2ShellPlain/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.86, 0.86, 0.84)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.45
+                token outputs:surface
+            }
+        }
+
+        def Material "CollisionProxyBounds"
+        {
+            token outputs:surface.connect = </World/Looks/CollisionProxyBounds/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.6, 0.61, 0.62)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.85
+                token outputs:surface
+            }
+        }
+
+        def Material "CollisionProxyTask"
+        {
+            token outputs:surface.connect = </World/Looks/CollisionProxyTask/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.56, 0.2)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.7
+                token outputs:surface
+            }
+        }
+
+        def Material "CollisionContext"
+        {
+            token outputs:surface.connect = </World/Looks/CollisionContext/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.3, 0.31, 0.32)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.9
+                token outputs:surface
+            }
+        }
+
+        def Material "AffordanceGraspable"
+        {
+            token outputs:surface.connect = </World/Looks/AffordanceGraspable/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.15, 0.65, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+
+        def Material "AffordanceMaintenance"
+        {
+            token outputs:surface.connect = </World/Looks/AffordanceMaintenance/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.3, 0.55, 0.95)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+
+        def Material "AffordanceWaypoint"
+        {
+            token outputs:surface.connect = </World/Looks/AffordanceWaypoint/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.92, 0.92)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+    }
+
+    def Xform "Cameras"
+    {
+        def Camera "Node1_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.0022507285793939057, 0.9999974671072233, 0, 0), (-0.006003397192368776, 0.000013512051858896089, 0.9999819793574158, -0), (0.9999794465102834, -0.0022506880198186223, 0.006003412398368676, 0), (-3.0209091882902497, 0.0015312180908214172, -4.843484531882583, 1.0000000000000002) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "USLab_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.00045443418246171076, -0.9999998967447817, 0, 0), (-0.00020973882717396325, -9.531250229879126e-8, 0.9999999780048076, 0), (-0.9999998747495913, -0.0004544341724663434, -0.0002097388488305939, 0), (-0.9199850000000002, 0.00028499999999999993, -4.838330000000002, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "Node2_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.001925328093567105, -0.9999981465541485, 0, 0), (0.002221266433621207, 0.0000042766745945333055, 0.9999975329755274, 0), (-0.9999956795342483, -0.00192532334373558, 0.0022212705506258943, 0), (7.358048371965613, 0.005493079222219343, -4.838984070088799, 1.0000000000000002) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "Columbus_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (-0.9999807332640909, 0.006207503573203319, 1.0842021724855047e-19, 0), (0.0008429494213619189, 0.13579262106538678, 0.9907369244660591, 0), (0.0061500029987275285, 0.99071783619938, -0.13579523739636346, 0), (10.946365560726212, -3.1724829649286157, -4.713672572367423, 1.0000000000000002) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "JEM_PM_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.999993344201753, 0.003648499992409233, 0, -0), (0.0002308106254490991, -0.06326136486236676, 0.9979969671508057, 0), (0.003641191927074151, -0.997990324684341, -0.06326178592005059, 0), (10.947520877808019, 3.790653214939422, -4.737031371836887, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "Node3_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.999993756981633, -0.003533553135146971, -4.235164736271502e-22, 0), (0.0000037218035418972066, 0.0010532685272481507, 0.999999445305625, 0), (-0.0035335511751049225, -0.9999932022907209, 0.0010532751028639634, 0), (-4.458564141250266, 3.288446345511315, -4.848894347270961, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "Cupola_Wide"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 14
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (4.336808689942017e-19, -0.9898431187224854, -0.1421639909321041, 0), (0.9998939106793007, -0.0020707559605345604, 0.014418021924184937, -0), (-0.014565966718840424, -0.14214890885087822, 0.9897381069384213, 0), (-4.477887826125759, 6.728123422896388, -6.960257818915816, 0.9999999999999998) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "USLab_to_Node2_ThroughHatch"
+        {
+            float2 clippingRange = (0.02, 80)
+            float focalLength = 18
+            float fStop = 0
+            float horizontalAperture = 36
+            float verticalAperture = 20.25
+            matrix4d xformOp:transform = ( (0.00034821426460324135, -0.9999999393734114, -6.617444900424224e-24, 0), (-0.00016071426415156044, -5.596300269563265e-8, 0.9999999870854612, 0), (-0.999999926458873, -0.0003482142601062147, -0.00016071427389511864, 0), (3.7747999999999995, 0.0016499999999999998, -4.837699999999999, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+    variantSet "truthLayer" = {
+        "affordance" {
+            over "Environment"
+            {
+                over "ISS"
+                {
+                    over "Visual"
+                    {
+                        token visibility = "invisible"
+                    }
+
+                    over "Collision"
+                    {
+                        token visibility = "inherited"
+
+                        over "USLab"
+                        {
+                            over "WallA" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallB" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Handrail_A"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Handrail_B"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "MaintenancePanel" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionContext> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+                        }
+
+                        over "Node1"
+                        {
+                            over "Node1_Int_Metal_Hatch_Zenith"
+                            {
+                                over "Untitled_775_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node2"
+                        {
+                            over "Node2_Int_Hub_ZNH"
+                            {
+                                over "Untitled_311_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Columbus"
+                        {
+                            over "Module_Connect_004"
+                            {
+                                over "Untitled_472_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "JEM_PM"
+                        {
+                            over "JPM_CollapsedForUnity_Starboard"
+                            {
+                                over "Untitled_518_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node3"
+                        {
+                            over "Node3_Int__Bulkhead_SBD"
+                            {
+                                over "Untitled_043_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Cupola"
+                        {
+                            over "Cupola_Int_Cabin"
+                            {
+                                over "Untitled_528_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    over "Affordances"
+                    {
+                        token visibility = "inherited"
+                    }
+                }
+            }
+
+            over "Task"
+            {
+                token visibility = "inherited"
+            }
+
+        }
+        "collision" {
+            over "Environment"
+            {
+                over "ISS"
+                {
+                    over "Visual"
+                    {
+                        token visibility = "invisible"
+                    }
+
+                    over "Collision"
+                    {
+                        token visibility = "inherited"
+
+                        over "USLab"
+                        {
+                            over "WallA" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallB" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Handrail_A"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Handrail_B"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "MaintenancePanel" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyTask> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+                        }
+
+                        over "Node1"
+                        {
+                            over "Node1_Int_Metal_Hatch_Zenith"
+                            {
+                                over "Untitled_775_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node2"
+                        {
+                            over "Node2_Int_Hub_ZNH"
+                            {
+                                over "Untitled_311_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Columbus"
+                        {
+                            over "Module_Connect_004"
+                            {
+                                over "Untitled_472_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "JEM_PM"
+                        {
+                            over "JPM_CollapsedForUnity_Starboard"
+                            {
+                                over "Untitled_518_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node3"
+                        {
+                            over "Node3_Int__Bulkhead_SBD"
+                            {
+                                over "Untitled_043_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Cupola"
+                        {
+                            over "Cupola_Int_Cabin"
+                            {
+                                over "Untitled_528_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    over "Affordances"
+                    {
+                        token visibility = "invisible"
+                    }
+                }
+            }
+
+            over "Task"
+            {
+                token visibility = "invisible"
+            }
+
+        }
+        "visual" {
+            over "Environment"
+            {
+                over "ISS"
+                {
+                    over "Visual"
+                    {
+                        token visibility = "inherited"
+                    }
+
+                    over "Collision"
+                    {
+                        token visibility = "invisible"
+
+                        over "USLab"
+                        {
+                            over "WallA" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallB" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "WallD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "AftHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdBulkhead3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway0" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway1" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway2" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "FwdHatchway3" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_AD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BC" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Standoff_BD" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+
+                            over "Handrail_A"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Handrail_B"
+                            {
+                                over "Grip" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff0" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Standoff1" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyTask> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "MaintenancePanel" (
+                                prepend apiSchemas = ["MaterialBindingAPI"]
+                            )
+                            {
+                                rel material:binding = </World/Looks/CollisionProxyTask> (
+                                    bindMaterialAs = "strongerThanDescendants"
+                                )
+                            }
+                        }
+
+                        over "Node1"
+                        {
+                            over "Node1_Int_Metal_Hatch_Zenith"
+                            {
+                                over "Untitled_775_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node2"
+                        {
+                            over "Node2_Int_Hub_ZNH"
+                            {
+                                over "Untitled_311_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Columbus"
+                        {
+                            over "Module_Connect_004"
+                            {
+                                over "Untitled_472_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "JEM_PM"
+                        {
+                            over "JPM_CollapsedForUnity_Starboard"
+                            {
+                                over "Untitled_518_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Node3"
+                        {
+                            over "Node3_Int__Bulkhead_SBD"
+                            {
+                                over "Untitled_043_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Cupola"
+                        {
+                            over "Cupola_Int_Cabin"
+                            {
+                                over "Untitled_528_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    over "Affordances"
+                    {
+                        token visibility = "invisible"
+                    }
+                }
+            }
+
+            over "Task"
+            {
+                token visibility = "invisible"
+            }
+
+        }
+    }
+}

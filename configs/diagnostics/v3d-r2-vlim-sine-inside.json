@@ -1,0 +1,66 @@
+{
+  "version": "v3d-r2-vlim-sine-inside",
+  "derived_from": "configs/iss_v0_momentum_v3.json (gate v3, unchanged)",
+  "change": "DIAGNOSTIC ONLY, not a gate config: test_b start pose as v3d-r2-vlim-start, plus each driven DOF centred so centre +/- 0.5 rad amplitude stays 0.05 rad inside its limits; sine about the start pose. Physics and thresholds = v3.",
+  "simulator": "Isaac Sim 6.0.1",
+  "physics": {
+    "dt_s": 0.004166666666666667,
+    "substeps": 1,
+    "solver_type": "PGS",
+    "position_iterations": 16,
+    "velocity_iterations": 4,
+    "duration_s": 10.0,
+    "gravity_m_s2": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "linear_damping": 0.0,
+    "angular_damping": 0.0,
+    "sleep_threshold": 0.0,
+    "self_collision": false,
+    "joint_friction": 0.0,
+    "fix_base": false
+  },
+  "momentum": {
+    "reference_frame": "world",
+    "angular_reference_point": "system_center_of_mass",
+    "sampling": "every_physics_step"
+  },
+  "test_a": {
+    "name": "no_actuation",
+    "drive_stiffness": 0.0,
+    "drive_damping": 0.0,
+    "initial_base_linear_velocity_m_s": [
+      0.05,
+      0.0,
+      0.0
+    ],
+    "initial_base_angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.1
+    ],
+    "max_relative_linear_momentum_error": 0.001,
+    "max_relative_angular_momentum_error": 0.01
+  },
+  "test_b": {
+    "name": "internal_actuation_from_rest",
+    "driven_joints": "both_arms_shoulder_and_elbow",
+    "drive_type": "position_PD",
+    "drive_stiffness": 100.0,
+    "drive_damping": 10.0,
+    "other_drive_stiffness": 0.0,
+    "other_drive_damping": 0.0,
+    "amplitude_rad": 0.5,
+    "frequency_hz": 0.5,
+    "initial_all_link_velocities": "zero",
+    "max_linear_momentum_fraction_of_pref": 0.001,
+    "max_angular_momentum_fraction_of_lref": 0.01,
+    "pref_definition": "max_t sum_i m_i * |v_i|",
+    "lref_definition": "max_t sum_i |m_i * (r_i - c) x v_i + R_i I_i R_i^T w_i|",
+    "start_pose_rule": "limit_margin_sine_inside",
+    "start_pose_margin_rad": 0.05,
+    "sine_center": "start"
+  }
+}

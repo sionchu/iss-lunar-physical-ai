@@ -158,3 +158,62 @@ G1 linear ratios stayed ≤ 0.0000122 in every variant.
 **What the G1 PASS means, and what it does not.** G1 (Unitree `g1_29dof.urdf`, provenance above) conserves whole-body linear and angular momentum within the fixed tolerances in Isaac Sim 6.0.1 PhysX PGS, for a free spin and for internal arm actuation, with self-collision off and no contacts. It does **not** validate contact/handrail behavior, controllers, self-collision, actual hardware inertias (seven G1 links have missing or identity-style inertias in the URDF), or behavior under TGS or other solver settings.
 
 **R2:** fails Test B under every setting tried (best 0.0177). Its pre-test state is solver-dependent (lead, UNKNOWN cause). R2 remains `KINEMATIC / VISUAL`.
+
+## 2026-10-15 diagnostics under gate v3 (no gate change)
+
+Gate v3 (`configs/iss_v0_momentum_v3.json`, SHA-256 `ecfba963…`) and its thresholds are unchanged. New physics or test conditions live only in versioned diagnostic configs (`configs/diagnostics/v3d-*.json`). Results are in ignored `outputs/fail_fix/`. Verdicts are read from the JSON files, not from process exit codes. R2 V-dyn / V-lim: see [ISS_V0_R2_DIAGNOSIS.md](ISS_V0_R2_DIAGNOSIS.md); R2 still fails.
+
+### 1b: G1 whole-body posture PD (the S1.3 condition), reproduced and ablated
+
+**Verdict: reproduced, cause not located.** The ratio is driven by PD on the non-arm DOFs. Gain and timestep change it; contacts, scene placement and solver iterations do not. Nothing was adopted.
+
+**Condition:** PD on all 29 DOFs toward the start pose (q = 0), with the gate Test B arm sine on top. The ratio uses the Test B definition, max |L| / max Lref.
+
+**Two implementations:**
+- `scripts/iss_g1_posture_diag.py`: one G1 in the ISS scene at the S1.3 hold placement.
+- The isolated gate harness with `v3d-g1pd` (it now honours `other_drive_stiffness/damping`; these are 0 in every gate config).
+
+| Variant (single factor vs S1.3) | In scene: angular ratio | Isolated harness: angular ratio | Absolute max \|ΔL\| kg·m²/s |
+| --- | ---: | ---: | ---: |
+| Gate Test B (arm PD only), reference | — | 0.007032 PASS | 0.00943 |
+| S1.3 whole-body PD 100/10 | **0.018362** (S1.3 record 0.0184; pelvis turn 13.8°, same as recorded) | 0.018265 | 0.0211 |
+| dt 1/480 | 0.019766 | 0.019763 | 0.0229 |
+| position iterations 64 | 0.018385 | 0.018270 | 0.0211 |
+| all gains halved (50/5) | 0.014958 | 0.014949 | 0.0183 |
+| contact filter off (scene) | 0.018362, **0 contact pairs** (identical to filter on) | — | 0.0212 |
+
+- All linear ratios are ≤ 8e-6.
+- The worst |L| is at t = 10 s every time, i.e. the drift accumulates over the run.
+- Whole-body PD lowers Lref by only 14 % (1.34 → 1.15 kg·m²/s). The absolute error, however, doubles. The failure is therefore real, not an artefact of the denominator.
+- **What can be excluded:** contacts (none occur; filter on and off are bit-identical), scene placement (isolated ≈ scene), and solver iteration count.
+- **What changes the result:** PD stiffness (halving the gains lowers the ratio by 18 %) and a finer timestep (which makes it worse, unlike the arm-only Test B under TGS).
+- **Interpretation:** the error grows with the joint-drive stiffness on the undriven chain (legs and waist). That is an inference, not a proven mechanism. The mechanism is UNKNOWN.
+- **Next single-factor splits (NOT_RUN):** PD on legs only vs waist only; PhysX acceleration-type drives.
+- **Status:** whole-body joint PD remains outside the gate-validated condition. Any controller that relies on it needs its own momentum check.
+
+### 1c: G1 asset revision `g1_29dof_rev_1_0.urdf` (comparison only; canonical asset unchanged)
+
+**Provenance:**
+- `unitreerobotics/unitree_ros`, HEAD `5994d4faef0a9cadd3287f8de0199a67eeb2a259` (2026-09-30), sparse checkout in ignored `assets/raw/unitree_ros_head/`, BSD-3-Clause as in the existing checkout.
+- The README marks `g1_29dof` Deprecated and `g1_29dof_rev_1_0` Up-to-date.
+- rev_1_0 SHA-256 `c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8`: 39 links, 29 DOFs, 33.341142 kg (vs 35.115142 kg).
+- What differs: `waist_yaw_link`, `waist_roll_link` and `torso_link` (new `*_rev_1_0.STL` meshes); `waist_support_link` is removed; the origins of 13 joints change.
+- The canonical `g1_29dof.urdf` at HEAD is byte-identical to the local `ccfc6fd` copy (`e1dc8936…`).
+- The harness driven-DOF mapping now accepts any `g1_29dof*` file name. All eight arm DOFs matched.
+
+| Run (v3) | Linear | Angular | Verdict |
+| --- | ---: | ---: | --- |
+| rev_1_0 Test A | 0.0000428 | 0.002043 | PASS |
+| rev_1_0 Test B | 0.0000037 | 0.005943 | PASS |
+| rev_1_0 Test B-only | 0.0000037 | 0.005943 | PASS (identical; initial-state hash `cdd1a006…`) |
+| `g1_29dof` Test B (same session) | 0.0000036 | 0.007032 | PASS (reproduces the v3 record) |
+
+- Calibration was not re-run (as briefed). The v3 calibration record stands.
+- rev_1_0 also conserves momentum within v3. Switching the canonical asset is an owner decision and has not been done.
+- Its inertial and collision fidelity is as UNKNOWN as that of the deprecated file.
+
+### 1d: TGS note for later contact work (record only)
+
+- G1 under v1 (TGS, dt 1/240, 16/4 iterations) failed reset-safe Test B at 0.01134 (limit 0.01). Under TGS, finer dt or more position iterations fixed Test B but broke Test A (see the v3 sections above).
+- Contact or handrail work that switches to TGS for contact quality would leave the momentum-validated condition and needs its own versioned gate run.
+- No new gate was created.

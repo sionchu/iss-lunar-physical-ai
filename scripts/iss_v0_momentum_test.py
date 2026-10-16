@@ -82,6 +82,36 @@ def load_fresh_stage(app, usd_path, result):
     return roots[0], dirty
 
 
+def limit_report(art, q):
+    """Per-DOF position vs PhysX joint limits (outside, or within 1e-3 rad of a limit)."""
+    lo, hi = (x.numpy()[0].astype(float) for x in art.get_dof_limits())
+    rows = []
+    for name, v, a, b in zip(art.dof_names, np.asarray(q, dtype=float), lo, hi):
+        flag = "outside" if v < a - 1e-6 or v > b + 1e-6 else "at_limit" if min(v - a, b - v) <= 1e-3 else "inside"
+        rows.append({"dof": name, "q": float(v), "lower": float(a), "upper": float(b), "state": flag})
+    return {"outside": [r["dof"] for r in rows if r["state"] == "outside"],
+            "at_limit": [r["dof"] for r in rows if r["state"] == "at_limit"], "dofs": rows}
+
+
+def start_pose(art, rule, margin, driven, amplitude):
+    """Diagnostic start pose: move every DOF whose q=0 is outside/at a limit to the nearest limit + margin inward.
+
+    rule "limit_margin": only those DOFs move (margin inward). rule "limit_margin_sine_inside": driven DOFs are
+    additionally centred so that centre +/- amplitude stays margin inside the limits (requires sine_center=start).
+    """
+    lo, hi = (x.numpy()[0].astype(float) for x in art.get_dof_limits())
+    q = np.zeros(art.num_dofs)
+    for i in range(art.num_dofs):
+        inner = margin + (amplitude if rule == "limit_margin_sine_inside" and i in driven else 0.0)
+        if lo[i] + inner > hi[i] - inner:
+            raise RuntimeError(f"start-pose rule infeasible for {art.dof_names[i]}")
+        if rule == "limit_margin_sine_inside" and i in driven:
+            q[i] = min(max(0.0, lo[i] + inner), hi[i] - inner)
+        elif not (lo[i] + 1e-3 < 0.0 < hi[i] - 1e-3):
+            q[i] = min(max(0.0, lo[i] + margin), hi[i] - margin)
+    return q
+
+
 def initial_state(art, bodies):
     """Read back the articulation state before test initial conditions are applied."""
     arrays = {"dof_positions": art.get_dof_positions().numpy()[0],
@@ -169,6 +199,7 @@ def main():
                 raise RuntimeError("Rigid-body tensor invalid")
             state = initial_state(art, bodies)
             state["reloaded_dirty_layers"] = reloaded
+            state["joint_limits"] = limit_report(art, state["dof_positions"])
             masses = art.get_link_masses().numpy()[0].astype(np.float64)
             inertias = art.get_link_inertias().numpy()[0].reshape(-1, 3, 3).astype(np.float64)
             com, _ = art.get_link_coms()
@@ -181,7 +212,7 @@ def main():
             driven = []
             if key == "test_b":
                 driven = [i for i, name in enumerate(dof_names) if any(f"{side}_armjoint{joint}_" in name for side in ("left", "right") for joint in range(4))]
-                if not driven and urdf.name == "g1_29dof.urdf":
+                if not driven and urdf.name.startswith("g1_29dof"):
                     expected = [f"{side}_{joint}_joint" for side in ("left", "right")
                                 for joint in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow")]
                     driven = [dof_names.index(name) for name in expected if name in dof_names]
@@ -191,7 +222,17 @@ def main():
                         continue
                 if not driven:
                     raise RuntimeError(f"No shoulder/elbow arm DOFs matched: {dof_names}")
+                gains[0, :] = CONFIG[key].get("other_drive_stiffness", 0.0)   # 0 in every gate version
                 gains[0, driven] = CONFIG[key]["drive_stiffness"]
+            # Diagnostic-only test-B options (absent in gate configs = q from import, sine about 0).
+            rule = CONFIG[key].get("start_pose_rule")
+            center = np.zeros(art.num_dofs, dtype=np.float32)
+            if rule:
+                center = start_pose(art, rule, CONFIG[key]["start_pose_margin_rad"], driven,
+                                    CONFIG[key].get("amplitude_rad", 0.0)).astype(np.float32)
+                art.set_dof_positions(center[None, :])
+                targets = center[None, :].copy()
+            sine_center = center if CONFIG[key].get("sine_center") == "start" else np.zeros_like(center)
             armature = CONFIG["physics"].get("joint_armature_kg_m2")   # absent in v1 = importer default
             if armature is not None:
                 scope = CONFIG["physics"].get("joint_armature_scope", "all")   # "all" | "undriven" (diagnostic)
@@ -208,6 +249,7 @@ def main():
                                      "nonzero_dofs": int((arm_now > 0).sum()), "dofs": int(arm_now.size)}
             damping = np.zeros_like(gains)
             if driven:
+                damping[0, :] = CONFIG[key].get("other_drive_damping", 0.0)
                 damping[0, driven] = CONFIG[key]["drive_damping"]
             art.set_dof_gains(gains, damping)
             art.set_dof_position_targets(targets)
@@ -217,11 +259,15 @@ def main():
             else:
                 art.set_velocities(linear_velocities=[[0, 0, 0]], angular_velocities=[[0, 0, 0]])
                 art.set_dof_velocities(np.zeros((1, art.num_dofs), dtype=np.float32))
+            if rule:
+                state["start_pose"] = {"rule": rule, "margin_rad": CONFIG[key]["start_pose_margin_rad"],
+                                       "sine_center": CONFIG[key].get("sine_center", "zero"),
+                                       "joint_limits": limit_report(art, art.get_dof_positions().numpy()[0])}
             observations = []
             nsteps = round(physics["duration_s"] / physics["dt_s"])
             for step in range(nsteps + 1):
                 if key == "test_b":
-                    targets[0, driven] = CONFIG[key]["amplitude_rad"] * math.sin(2 * math.pi * CONFIG[key]["frequency_hz"] * step * physics["dt_s"])
+                    targets[0, driven] = sine_center[driven] + CONFIG[key]["amplitude_rad"] * math.sin(2 * math.pi * CONFIG[key]["frequency_hz"] * step * physics["dt_s"])
                     art.set_dof_position_targets(targets)
                 data = measure(bodies, masses, inertias, coms, names)
                 observations.append(data)

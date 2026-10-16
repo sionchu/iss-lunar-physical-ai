@@ -258,7 +258,7 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 | Isaac Sim UI | none shown | `scripts/gui_demo_iss_microlab.py`: real Isaac Sim GUI screen recording |
 
 ### Provenance (S1.1)
-- **ISS interior + handrails: NASA, Apache-2.0.** Source repo `https://github.com/nasa/astrobee_media` at `1cb0620121099cc848f5a3db480464188dc91ea3` (2023-03-20); license per `astrobee_iss/package.xml`. Upstreams named by that repo: NASA 3D Resources "ISS Internal" (IGOAL) for the interior, `nasa-jsc-robotics/r2_gazebo` for the handrails.
+- **ISS interior + handrails: NASA media; two license statements, governing terms UNKNOWN.** Source repo `https://github.com/nasa/astrobee_media` at `1cb0620121099cc848f5a3db480464188dc91ea3` (2023-03-20). `astrobee_iss/package.xml` and every `astrobee_handrail_*/package.xml` declare Apache-2.0, but the repository `readme.md` says all multimedia in it is covered by NASA's Media Usage Guidelines (https://www.nasa.gov/multimedia/guidelines/index.html). The interior meshes are redistributed from NASA 3D Resources "ISS Internal" (IGOAL, https://nasa3d.arc.nasa.gov/detail/iss-internal); the handrails from `nasa-jsc-robotics/r2_gazebo`. Both statements are recorded. Until clarified, treat the meshes as NASA media under the Media Usage Guidelines (no NASA endorsement or insignia implied) and do not redistribute them in Git. (Earlier revisions of this document said "Apache-2.0" only.)
   - `astrobee_iss/meshes/us_lab.dae` SHA-256 `1b54da04c84139eeb05944c92ef7bbf3cdaf6b7b92d0a3ac178ea911f0cc71aa`
   - `astrobee_handrail_30/meshes/handrail_30.dae` SHA-256 `0dc019783d46a353e4daea0cf0b664a8048c2d99138bef378f8588866bb28c5a`
 - Converted by `scripts/import_iss_media.py` (`omni.kit.asset_converter`, metres) to `assets/cache/iss_media/` with `import_report.json`. `assets/raw/` and `assets/cache/` are gitignored; a fresh clone must sparse-clone `nasa/astrobee_media` into `assets/raw/astrobee_media` and run the importer.
@@ -351,6 +351,75 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - **G1 asset setup (fresh clone):** copy `robots/g1_description/g1_29dof.urdf` and its `meshes/` from `unitreerobotics/unitree_ros` @ `ccfc6fd` into gitignored `assets/raw/unitree_ros/robots/g1_description/`, or set `ISS_G1_URDF`. The expected URDF SHA-256 is `e1dc8936…` (the scripts record the actual hash).
 - **Render resume:** `iss_physics_render.py --resume` keeps existing frames and renders only the missing ones. It was added after a full render stopped at frame ~150 with exit code 0 and no traceback. The cause is UNKNOWN; another Kit process (`compose_idea_video.py`, not part of this repo) started at the same moment. The re-render completed (301 frames).
 - **Not validated:** grasp mechanics and any hand/rail/panel contact; posture control (plain joint PD); G1 hardware inertias. The posture-PD momentum behaviour measured in S1.3 (ratio 0.0184 > 0.01) still applies: whole-body PD is outside the gate-validated condition.
+
+## Full ISS interior v0 receipt (2026-10-15)
+
+**Verdict:** the scene contract holds on the full USOS interior available in the source, except for hatch alignment.
+- `scripts/check_iss_full.py`: **27/33 PASS** in both pxr and `--isaac` (Kit, headless).
+- The 6 FAILs are the 6 inter-module hatch axial gaps. They exceed the 0.10 m tolerance, which was fixed before measuring and was not changed.
+- Visual track only: no physics actor or physics run uses this scene yet.
+
+**Scene and source**
+- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `d40d7bd3b178162a17be8c95a4a7b95c78becff7027cd3be919c864114a31d70`). It reuses the S1 helpers from `build_iss_microlab.py`.
+- Meshes: `scripts/import_iss_media.py` now converts all 7 interior modules plus handrails 8.5 / 21.5 / 30 / 41.5. Existing conversions are kept unless `--force`.
+- Source: `nasa/astrobee_media@1cb0620`. The sparse checkout was extended to `astrobee_handrail_8_5` and `astrobee_handrail_41_5` at the same commit.
+
+**Frames and poses**
+- Every module is posed exactly by its `<visual>` origin in `astrobee_iss/urdf/model.urdf` (matrix error 0 in the checker). The URDF rpy uses `3.1415`, not π: about 0.4 mm at 4 m.
+- `/World/Environment/ISS` rotates the Astrobee world frame (x forward, y starboard, z nadir) by 180° about x, so scene +Z is zenith. Renders confirm that the "DECK" labels and the nadir window point down.
+- US Lab uses scale 1.0858 (from the URDF). Its URDF collision origin is 0.104 m forward of its visual origin. Both are recorded, the visual origin is used, and which one is correct is flagged UNKNOWN.
+
+**Finding: the S1 micro-lab US Lab is posed 90° off from the Astrobee pose.**
+- `omni.kit.asset_converter` writes `upAxis = Y` but keeps the DAE's Z-up coordinates: raw DAE vertices × 0.1 match the converted USD bbox within 1 mm.
+- S1 therefore posed `us_lab.usd` with rotateX 90° and without the URDF's rotateX 180°. This differs from the Astrobee pose by 90° about the module axis.
+- The full scene carries all S1 US Lab elements (rails, proxies, GLA lights, panel) through S1⁻¹ · URDF, so they stay on the same mesh surfaces. S1's wall names (port / starboard / overhead / deck) are therefore *not* station directions.
+- `scenes/iss_microlab_v0.usda` was not changed.
+
+**Collision (strategy recorded per module in `iss:collisionStrategy`)**
+- US Lab: the S1 primitive proxies minus the two hatch caps, so both hatchways are open.
+- Node 1 / Node 2 / Node 3 / Columbus / JEM PM / Cupola: static triangle mesh of the interior mesh (`approximation = none`), with no SDF, no convex decomposition and no rigid bodies.
+- Collision fidelity of these meshes is UNVALIDATED (visual mesh used as a collider), and no physics run has used them.
+
+**Affordances**
+- The two S1 handrails and the maintenance target, US Lab only. No public ISS handrail layout exists, so no rails and no placeholders were added elsewhere.
+- Six `hatch` affordances at the measured hatch centres.
+- Known gaps, recorded on the ISS prim: PMM, Quest airlock, JEM ELM-PS, Russian segment, PMA-2/3 and visiting vehicles, and handrails outside the US Lab.
+
+**Hatch alignment**
+- Method: the enclosed line-of-sight opening through a 0.5 m slab at each module end, 1 cm raster.
+- Tolerance, fixed before measuring: centre offset ≤ 0.05 m, |axial gap| ≤ 0.10 m.
+
+| Hatch | Centre offset m | Axial gap m (+ = gap) | Openings m |
+| --- | ---: | ---: | --- |
+| Node1–USLab | 0.031 | 0.233 | 1.26×1.26 / 1.27×1.26 |
+| USLab–Node2 | 0.013 | 0.135 | 1.27×1.27 / 1.27×1.26 |
+| Node2–Columbus | 0.045 | 0.239 | 1.26×1.26 / 1.20×1.20 |
+| Node2–JEM PM | 0.038 | 0.202 | 1.26×1.26 / 1.26×1.26 |
+| Node1–Node3 | 0.010 | 0.411 | 1.26×1.26 / 1.21×1.20 |
+| Node3–Cupola | **0.125** | 0.205 | 1.20×1.20 / **1.76×1.75** |
+
+- All axial gaps fail. With the US Lab at its URDF collision origin, Lab–Node2 closes to 0.031 m but Node1–Lab opens to 0.337 m. The Node1–Node2 total stays about 0.37 m, so neither origin closes both.
+- The likely reason is that the meshes omit the berthing vestibules (inference, UNKNOWN).
+- The Cupola-side opening (1.76 m) probably measured a window aperture rather than its hatch, so that row is UNKNOWN.
+
+**Runtime (Isaac Sim 6.0.1, RTX 4070 Ti 12 GB, driver 610.88, headless)**
+- Scene opens in about 1 s.
+- Whole-GPU `memory.used`: 2,227 MiB before the app, 4,058 MiB empty app, 4,524 MiB with the scene open, 5,428 MiB after rendering two cameras.
+- `app.update()` rate with one 1920×1080 render product, renderer `RealTimePathTracing`:
+  - Node1 view: 72.6 FPS stopped, 53.3 FPS with the timeline playing (static colliders only);
+  - through-hatch view: 70.1 / 53.0 FPS.
+- GUI viewport FPS was NOT measured.
+- The renderer reported `RealTimePathTracing` although `PathTracing` was requested. Stills are 64 subframes in that mode.
+
+**Renders (`outputs/iss_full_v0/`, gitignored)**
+- `<Module>_Wide.png` for the 7 modules and `USLab_to_Node2_ThroughHatch.png`, plus `*_collision.png` and `contact_sheet_{visual,collision}.png`.
+- Module lights are presentation sphere lights on each module's centre line, not an ISS lighting specification.
+- QA defect found and fixed: rendering several cameras in one process by retargeting one render product overexposed every camera after the first. The first batch was kept in `qa_first_render/`. Each camera is now rendered in its own process (`--camera`). The perf FPS run still used one process with two cameras (frame rate only, no image output).
+
+**Not done / UNKNOWN**
+- No physics actor in this scene. Triangle-mesh contact behaviour is UNKNOWN.
+- Hatch vestibules, the US Lab origin and the Cupola hatch measurement: see above.
+- License: see the S1.1 provenance note (Apache-2.0 vs NASA Media Usage Guidelines, governing terms UNKNOWN).
 
 ## Claim ladder
 

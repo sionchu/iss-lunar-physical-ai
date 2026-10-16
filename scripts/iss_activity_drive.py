@@ -49,6 +49,9 @@ def main():
     ap.add_argument("--filter-contacts", action="store_true",
                     help="collision-filter G1 vs ISS (S1.3/S1.4 condition); default: contacts ON, resolved by PhysX")
     ap.add_argument("--tag", default="activity", help="output file prefix")
+    ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
+                    help="traj_step: cuRobo trajectory optimisation with the held hand constrained along the path "
+                         "(default); step: chained IK waypoints")
     args = ap.parse_args()
     py = os.environ.get("CUROBO_PYTHON")
     if not py:
@@ -78,6 +81,7 @@ def main():
                                           "anchor": {"hand": "right", **st["hands"]["right"]}},
                           "start_plan": {k: st[k] for k in ("success", "feasible", "hand_goal_error_m")},
                           "anchors": anchors, "planner_port": args.port, "max_retries": args.max_retries,
+                          "planner_mode": args.planner_mode, "retry_mode": "step",
                           "panel": {"after_anchor": rail_b, "target": [panel[0], panel[1], panel[2] - 0.06]},
                           **CONTROL}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")

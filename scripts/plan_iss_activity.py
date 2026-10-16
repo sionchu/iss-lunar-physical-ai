@@ -60,6 +60,7 @@ MAX_SWING_RAD = 1.5    # largest actuated-joint change per step; executed slowly
 SECONDS_PER_RAD = 3.0
 HELD_TOL_M = 0.02     # planner acceptance for the anchored hand (the fixed joint holds it in execution); the
                       # warm-started solver lands at 1.1-1.6 cm, so 1 cm forced large global swings or no plan
+TRAJ_TIME_SCALE = 1.0  # trajectory time multiplier for joint-PD tracking
 CLEARANCE_M = 0.04   # world-collision activation distance: plans keep this margin (execution deviates from plans)
 CENTRE_Z = -4.84     # shared module axis height in the scene frame (measured hatch centres)
 HANDS = {"left": "left_rubber_hand", "right": "right_rubber_hand"}
@@ -392,6 +393,65 @@ class Planner:
                                np.asarray(r["a_prev"], float), np.asarray(r["a_cur"], float),
                                np.asarray(r["a_next"], float), r["frames"])
         return dict(st, frames=st["frames"])
+
+    def traj_step(self, r):
+        """Closed-chain step by cuRobo trajectory optimisation from a measured state (same request as step()).
+
+        The held hand's pose is weighted at every timestep (non-terminal = terminal), the free hand's position
+        only at the end, the pelvis weakly at the end; world collision with the CLEARANCE_M margin. Returns ~40
+        waypoints sub-sampled from the interpolated trajectory, its held-hand drift and penetration along the whole
+        trajectory, and a duration (trajectory time x TRAJ_TIME_SCALE for joint-PD tracking).
+        """
+        from curobo.trajectory_optimizer import TrajectoryOptimizer, TrajectoryOptimizerCfg
+        if not hasattr(self, "trajopt"):
+            self.trajopt = TrajectoryOptimizer(TrajectoryOptimizerCfg.create(
+                robot=robot_cfg(), scene_model=self.scene, self_collision_check=False, use_cuda_graph=False,
+                optimizer_collision_activation_distance=CLEARANCE_M, num_seeds=8, position_tolerance=0.01,
+                orientation_tolerance=3.2))
+        held, free = r["held_hand"], r["free_hand"]
+        self.trajopt.update_tool_pose_criteria({
+            "pelvis": ToolPoseCriteria(terminal_pose_axes_weight_factor=[0.3, 0.3, 0.3, 0.1, 0.1, 0.1],
+                                       non_terminal_pose_axes_weight_factor=[0.0] * 6),
+            HANDS[held]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[1.0] * 6,
+                                          non_terminal_pose_axes_weight_factor=[1.0] * 6),
+            HANDS[free]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[1.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+                                          non_terminal_pose_axes_weight_factor=[0.0] * 6)})
+        q = self.qvec(r["q"], r["pelvis_pos"], r["pelvis_quat_wxyz"])
+        a_prev, a_cur, a_next = (np.asarray(r[k], float) for k in ("a_prev", "a_cur", "a_next"))
+        fq = facing_quat(a_next - a_prev)
+        mid = (a_prev + a_cur) / 2
+        goals = {"pelvis": (np.array([mid[0], mid[1], CENTRE_Z + 0.15]), fq),
+                 HANDS[held]: (r["held_pos"], r["held_quat_wxyz"]), HANDS[free]: (a_cur, fq)}
+        g = {k: Pose(position=T(to_plan_pt(p)), quaternion=T(wxyz(RP * rot(qq)))) for k, (p, qq) in goals.items()}
+        self.trajopt.reset_seed()
+        res = self.trajopt.solve_pose(GoalToolPose.from_poses(g, ordered_tool_frames=self.trajopt.tool_frames),
+                                      current_state=JointState.from_position(torch.as_tensor(q, device="cuda")[None],
+                                                                             joint_names=self.joints))
+        tr = res.interpolated_trajectory
+        last = int(res.interpolated_last_tstep.flatten()[0]) if res.interpolated_last_tstep is not None else None
+        pos = self.active(tr)[: (last + 1) if last is not None else None]
+        pick = np.unique(np.linspace(0, len(pos) - 1, min(40, len(pos))).round().astype(int))
+        act = [i for i, j in enumerate(self.joints) if j not in BASE]
+        drift, pen, links = 0.0, 0.0, set()
+        for qv in pos[pick]:
+            k = self.fk(qv)
+            drift = max(drift, float(np.linalg.norm(k[HANDS[held]][0] - np.asarray(r["held_pos"]))))
+            pp = self.penetration(qv)
+            pen = max(pen, pp["max_m"])
+            links |= set(pp["links"])
+        kf = self.fk(pos[-1])
+        free_err = float(np.linalg.norm(kf[HANDS[free]][0] - a_cur))
+        frames = [{"q": {**LEG_TUCK, **{j: float(v) for j, v in zip(self.joints, qv) if j not in BASE}}}
+                  for qv in pos[pick]]
+        frames[-1].update({"pelvis_pos": kf["pelvis"][0].tolist()})
+        return {"planner": "trajopt", "free_hand": free, "held_hand": held, "anchor": a_cur.tolist(), "frames": frames,
+                "free_hand_final_error_m": free_err, "path_max_held_drift_m": drift,
+                "path_max_penetration_m": pen, "path_penetrating_links": sorted(links),
+                "max_joint_change_rad": float(np.abs(pos[-1] - q)[act].max()),
+                "suggested_duration_s": float(np.clip(TRAJ_TIME_SCALE * len(pos) * self.trajopt.config.interpolation_dt,
+                                                      4.0, 16.0)),
+                "trajopt_success": bool(res.success.flatten()[0]),
+                "plan_success": free_err <= 0.04 and pen <= 0.0 and drift <= HELD_TOL_M}
 
     def chain(self, r):
         """Open-loop kinematic plan of the whole hand-over-hand traverse (diagnostic / preview; the executed run

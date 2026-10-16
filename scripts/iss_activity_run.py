@@ -230,7 +230,7 @@ def main():
             s_ = state_of(E)
             held = E["anchor_hand"]
             i = si + 1
-            st = ask({"mode": "step", "q": s_["q"], "pelvis_pos": s_["pelvis_pos"],
+            st = ask({"mode": ch.get("planner_mode", "step"), "q": s_["q"], "pelvis_pos": s_["pelvis_pos"],
                       "pelvis_quat_wxyz": s_["pelvis_quat_wxyz"], "held_hand": held,
                       "held_pos": s_["hands"][held]["pos"], "held_quat_wxyz": s_["hands"][held]["quat_wxyz"],
                       "free_hand": "left" if held == "right" else "right", "a_prev": anchors[i - 1],
@@ -278,7 +278,7 @@ def main():
                 retries += 1
                 s_ = state_of(E)
                 held = E["anchor_hand"]
-                fix = ask({"mode": "step", "q": s_["q"], "pelvis_pos": s_["pelvis_pos"],
+                fix = ask({"mode": ch.get("retry_mode", "step"), "q": s_["q"], "pelvis_pos": s_["pelvis_pos"],
                            "pelvis_quat_wxyz": s_["pelvis_quat_wxyz"], "held_hand": held,
                            "held_pos": s_["hands"][held]["pos"], "held_quat_wxyz": s_["hands"][held]["quat_wxyz"],
                            "free_hand": hand, "a_prev": anchors[st["step"] - 1], "a_cur": st["anchor"],

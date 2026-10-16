@@ -217,3 +217,40 @@ Gate v3 (`configs/iss_v0_momentum_v3.json`, SHA-256 `ecfba963…`) and its thres
 - G1 under v1 (TGS, dt 1/240, 16/4 iterations) failed reset-safe Test B at 0.01134 (limit 0.01). Under TGS, finer dt or more position iterations fixed Test B but broke Test A (see the v3 sections above).
 - Contact or handrail work that switches to TGS for contact quality would leave the momentum-validated condition and needs its own versioned gate run.
 - No new gate was created.
+
+## Canonical G1 switch to `g1_29dof_rev_1_0.urdf` (2026-10-16, owner decision)
+
+**Verdict: switched. The gate passes unchanged v3 and the S1.4 worksite task still succeeds.** Gate config and thresholds are unchanged. Records are in ignored `outputs/fail_fix/rev_*.json` and `outputs/iss_physics/physics_record.json`. The previous S1.4 record is kept as `physics_record_g1_29dof_s14.json`.
+
+**Provenance**
+- `unitreerobotics/unitree_ros` @ `5994d4faef0a9cadd3287f8de0199a67eeb2a259` (2026-09-30), `robots/g1_description/g1_29dof_rev_1_0.urdf`.
+- SHA-256 `c0ae739c640c3e2c00d1bdd8810b5d6e59601487bd1a3995859f9543269ee5c8`.
+- 39 links, 29 DOFs, 33.341142 kg authored mass. Meshes from the same commit, including `torso_link_rev_1_0`, `waist_roll_link_rev_1_0` and `waist_yaw_link_rev_1_0`.
+- License: BSD-3-Clause (repository license).
+- The upstream README marks `g1_29dof` Deprecated and `g1_29dof_rev_1_0` Up-to-date.
+- Local sparse checkout: gitignored `assets/raw/unitree_ros_5994d4f/`.
+- Default in `scripts/iss_physics_common.py` (`ISS_G1_URDF` still overrides it).
+- The former `g1_29dof.urdf` (`ccfc6fd`, `e1dc8936…`, 35.115142 kg) remains the asset of every earlier record in this document.
+- Inertial, COM and collision fidelity against hardware: UNKNOWN, as for the former file.
+
+| Re-verification (v3, unchanged) | Linear | Angular | Verdict |
+| --- | ---: | ---: | --- |
+| Calibration box | 0.0 | 0.000111 | PASS |
+| Calibration two-link | 0.0000040 | 0.001382 | PASS |
+| G1 rev_1_0 Test A | 0.0000428 | 0.002043 | PASS |
+| G1 rev_1_0 Test B (A→B) | 0.0000037 | 0.005943 | PASS |
+| G1 rev_1_0 Test B-only | 0.0000037 | 0.005943 | PASS (identical; initial-state hash `cdd1a006…`) |
+
+**S1.4 worksite re-run**
+- Script: `scripts/iss_physics_record.py`, same thresholds and the same documented procedure. IK uses PhysX as forward kinematics, and feed-forward start-pose placement is done by trial reaches. Both were re-derived automatically for rev_1_0.
+
+| Metric | `g1_29dof` (S1.4) | `g1_29dof_rev_1_0` |
+| --- | --- | --- |
+| Right-hand scripted grasp | ACHIEVED 1.958 s, 0.34 mm from plan | **ACHIEVED 1.9625 s, 0.33 mm** |
+| Post-grasp hand drift | 0.016 mm | 0.015 mm |
+| Left hand to panel point (min / final) | 0.93 / 1.71 cm | 0.93 / 1.71 cm |
+| IK residual (right / left) | 1.0 / 14.2 mm | 1.0 / 14.2 mm |
+| Placement trials, closest approach | 57.2 → 0.0 mm | 56.3 → 0.0 mm |
+
+- The grasp is still a scripted fixed joint, not finger contact. The whole-body PD momentum caveat (1b above) still applies.
+- The three-panel video and the GUI recording were NOT re-rendered with rev_1_0. They still show the former asset.

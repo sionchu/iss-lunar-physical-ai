@@ -13,10 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCENE = ROOT / "scenes" / "iss_microlab_v0.usda"
 OUT = ROOT / "outputs" / "iss_physics"
 GATE_CONFIG = ROOT / "configs" / "iss_v0_momentum_v3.json"
-# Unitree G1 from unitreerobotics/unitree_ros @ ccfc6fd (BSD-3-Clause), copied into gitignored assets/raw/;
-# override with the ISS_G1_URDF environment variable. Expected SHA-256 e1dc8936... (see docs/ISS_V0_MOMENTUM_GATE.md).
-G1_URDF = Path(os.environ.get("ISS_G1_URDF",
-                              ROOT / "assets" / "raw" / "unitree_ros" / "robots" / "g1_description" / "g1_29dof.urdf"))
+# Canonical G1 (2026-10-16): g1_29dof_rev_1_0.urdf from unitreerobotics/unitree_ros @ 5994d4f (BSD-3-Clause), sparse
+# checkout in gitignored assets/raw/unitree_ros_5994d4f/; override with ISS_G1_URDF. Expected SHA-256 c0ae739c...
+# The former g1_29dof.urdf (ccfc6fd, e1dc8936..., marked Deprecated upstream) is kept for history only.
+G1_URDF = Path(os.environ.get("ISS_G1_URDF", ROOT / "assets" / "raw" / "unitree_ros_5994d4f" / "robots" / "g1_description"
+                              / "g1_29dof_rev_1_0.urdf"))
 FPS, DURATION = 30, 10.0
 
 G1_PATH = "/World/Actors/G1"

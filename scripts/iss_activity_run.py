@@ -343,7 +343,8 @@ def main():
                     dmin = min(dmin, float(np.linalg.norm(pp - np.asarray(pr["target"]))))
                 res["panel_reach"] = {"hand": other, "min_distance_m": dmin, "planned_error_m": pr.get("reach_error_m")}
             rec["segments"].append(res)
-            print(json.dumps({k: v for k, v in res.items() if k != "contacts"}), flush=True)
+            print(json.dumps({**{k: v for k, v in res.items() if k != "contacts"},
+                              "contact_events": sum(contacts.values())}), flush=True)   # per-step total in the log
         rec["completed_steps"] = sum(s["status"] == "CAPTURED" for s in rec["segments"])
         rec["total_steps"] = n_steps
         rec["planning"] = "closed loop (cuRobo --serve, replanned per step from the measured state)"

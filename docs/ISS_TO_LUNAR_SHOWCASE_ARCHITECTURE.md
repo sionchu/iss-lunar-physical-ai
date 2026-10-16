@@ -539,7 +539,7 @@ A rerun with up to 8 corrective replans stopped silently after step 13: Kit exit
 ### Collision-aware planning, contacts ON (2026-10-17)
 
 **Verdict: PARTIAL.**
-- With G1–ISS contacts **on** (resolved by PhysX), the traverse is collision-free over the steps it completes, but it gets **only 4–5 of 36 steps**: Node1 through the hatch into the aft US Lab.
+- With G1–ISS contacts **on** (resolved by PhysX), the IK-chain planner gets **only 4–6 of 36 steps** (Node1 through the hatch into the aft US Lab). Some of those steps still touch the structure; see the per-step contact events below. An earlier report said these steps were contact-free. That was wrong: the per-step log line omitted the contact counts, which the run JSON holds.
 - It stalls when the trailing hand must pass the leading hand. No collision-free, small-swing closed-chain reach is found from those poses.
 - The contacts-filtered run above still reaches further (15 steps) but clips the structure.
 
@@ -563,17 +563,49 @@ A rerun with up to 8 corrective replans stopped silently after step 13: Kit exit
 | Run | Contacts | Steps captured | Frames penetrating (any / > 1 cm / > 3 cm / > 5 cm) | Max penetration | PhysX contact events |
 | --- | --- | ---: | --- | ---: | --- |
 | `chain_online_run_r4` (above) | filtered | 15 | 68 % / 57 % / 27 % / 8 % | 0.105 m (torso) | n/a (filtered) |
-| `cf1` | on | 6 | — | — | 0 in steps 1–6; 8,908 in failed step 7 (wrist, head) |
-| `cf7` | on | 5 | — | — | 0 in all completed steps |
-| `cf8` (current code) | on | 4 | 10 % / 7.5 % / 0 % / 0 % | 0.027 m | 5,300, all in failed step 5 (left ankle 2,291, head 1,645, right wrist 1,289) |
+| `cf1` | on | 6 | — | — | per step 0, 0, 96, 0, 230, 513; failed step 7: 8,908 (wrist, head) |
+| `cf7` | on | 5 | — | — | per step 0, 0, 0, 6,753, 0; failed step 6: 0 |
+| `cf8` | on | 4 | 10 % / 7.5 % / 0 % / 0 % | 0.027 m | per step 0, 0, 0, 5,300 (left ankle 2,291, head 1,645, right wrist 1,289); failed step 5: 0 |
 
-Penetration is sampled every 3rd recorded frame. cf8's numbers include its failed step.
+Penetration is sampled every 3rd recorded frame. cf8's numbers include its failed step. "Contact events" counts PhysX contact-report entries (G1 link vs ISS collider) per physics step, so light touches count too.
 
 **Not done / UNKNOWN**
-- Steps beyond 5 with contacts on.
-- A closed-chain trajectory optimiser (cuRobo trajopt with the held-hand pose as a constraint) or a whole-body controller, either of which would replace joint PD tracking of IK waypoints. Both are NOT_RUN.
+- A whole-body controller replacing joint PD tracking of planned waypoints (NOT_RUN). The trajectory optimiser is covered next.
 - Hand–handhold contact remains a scripted fixed joint.
 - The sphere model is cuRobo's approximation of G1's geometry, and its legs are fixed at the planner's tuck.
+
+### Trajectory optimisation with a held-hand constraint, contacts ON (2026-10-17, option A)
+
+**Verdict: PARTIAL, best result so far.**
+- **23 of 36 steps captured** with contacts on: Node1 → hatch → the whole US Lab → Handrail_B → US Lab/Node2 hatch rim → Node2 (pelvis x = 8.06 m).
+- The **maintenance-panel reach succeeded in execution** (minimum 1.65 cm to the panel point; planned 1.1 cm). The IK chain had missed by 0.21 m.
+- Step 24, in Node2 with anchors under its high ceiling, failed at 0.104 m after 6 corrections.
+- Geometric interference stayed low: 7 % of sampled frames, none above 3 cm, maximum 2.6 cm.
+- The robot still touches the structure: 10 of the 23 captured steps had zero PhysX contact events, 13 had some (up to 12,383 in step 21, Node2). Most contact events were on the right ankle (10,172) and the head (9,824).
+
+**Method**
+- `plan_iss_activity.py` mode `traj_step` uses cuRobo's `TrajectoryOptimizer`:
+  - Held hand: pose weighted at every timestep (non-terminal = terminal), which holds the closed chain.
+  - Free hand: position weighted at the end. Its terminal weight is 5; at 1, the held-hand term summed over the horizon dominated and the free hand stopped 0.07–0.95 m short (tj2).
+  - Pelvis: weakly weighted at the end.
+  - World collision: 4 cm activation margin.
+  - Endpoint seed: when one exists, the feasible IK candidate closest to the current joints (no penetration, held hand within 2 cm, free hand within 4 cm, swing at most 1.5 rad).
+- Each plan reports the held-hand drift and sphere penetration along the whole interpolated trajectory, sub-sampled to 40 waypoints, plus a duration from the trajectory time.
+- Corrective replans use the IK continuation `step` mode. About 70 s per trajectory solve (CUDA graphs off).
+
+| Run | Planner | Steps captured | Zero-contact captured steps | Frames penetrating (any / > 1 cm / > 3 cm) | Max penetration | Panel reach |
+| --- | --- | ---: | ---: | --- | ---: | --- |
+| `cf8` | IK chain | 4 | 3 | 10 % / 7.5 % / 0 % | 0.027 m | not reached |
+| `tj2` | trajopt, free-hand weight 1 | 8 | 3 | — | — | not reached |
+| `tj3` | trajopt, free-hand weight 5 | **23** | 10 | 7 % / 3.7 % / 0 % | 0.026 m | **1.65 cm (success)** |
+
+tj3 details: capture error 0.5–3.8 cm (radius 4 cm); 0–4 corrective replans per captured step; 385.9 s simulated.
+
+**Not done / UNKNOWN**
+- Steps 24–36 (Node2 centre, Columbus).
+- Contact-free execution: 13 captured steps still touch the structure.
+- Why the head and ankle contacts occur, when the planned paths show no sphere penetration. Likely PD tracking error (pelvis 0.2 m off plan in step 24), or G1's collision meshes differing from cuRobo's sphere model.
+- A whole-body controller (option B) is NOT_RUN.
 
 ## Claim ladder
 

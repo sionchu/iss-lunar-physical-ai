@@ -414,8 +414,9 @@ class Planner:
                                        non_terminal_pose_axes_weight_factor=[0.0] * 6),
             HANDS[held]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[1.0] * 6,
                                           non_terminal_pose_axes_weight_factor=[1.0] * 6),
-            HANDS[free]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[1.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+            HANDS[free]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[5.0, 5.0, 5.0, 0.0, 0.0, 0.0],
                                           non_terminal_pose_axes_weight_factor=[0.0] * 6)})
+        # free-hand terminal weight 5: at 1 it was outweighed by the held-hand term summed over the horizon
         q = self.qvec(r["q"], r["pelvis_pos"], r["pelvis_quat_wxyz"])
         a_prev, a_cur, a_next = (np.asarray(r[k], float) for k in ("a_prev", "a_cur", "a_next"))
         fq = facing_quat(a_next - a_prev)
@@ -423,10 +424,28 @@ class Planner:
         goals = {"pelvis": (np.array([mid[0], mid[1], CENTRE_Z + 0.15]), fq),
                  HANDS[held]: (r["held_pos"], r["held_quat_wxyz"]), HANDS[free]: (a_cur, fq)}
         g = {k: Pose(position=T(to_plan_pt(p)), quaternion=T(wxyz(RP * rot(qq)))) for k, (p, qq) in goals.items()}
+        # endpoint seed: the feasible IK candidate (no penetration, held <= HELD_TOL_M, free <= 4 cm, swing <=
+        # MAX_SWING_RAD) closest to the current joints, when one exists
+        act_i = [i for i, j in enumerate(self.joints) if j not in BASE]
+        for s in (self.ik, self.ik_local):
+            s.update_tool_pose_criteria({
+                "pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
+                HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[1.0] * 3),
+                HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)})
+        seed = None
+        for qc in self.solve_candidates(goals, k=16):
+            fc = self.frame(qc, self.constraints(torch.as_tensor(qc, device="cuda").view(1, 1, -1)), goals, held)
+            dq = float(np.abs(qc - q)[act_i].max())
+            if fc["success"] and fc["hand_goal_error_m"][HANDS[free]] <= 0.04 and dq <= MAX_SWING_RAD:
+                if seed is None or dq < seed[0]:
+                    seed = (dq, qc)
+        gs = None if seed is None else JointState.from_position(torch.as_tensor(seed[1], device="cuda")[None],
+                                                                 joint_names=self.joints)
         self.trajopt.reset_seed()
         res = self.trajopt.solve_pose(GoalToolPose.from_poses(g, ordered_tool_frames=self.trajopt.tool_frames),
                                       current_state=JointState.from_position(torch.as_tensor(q, device="cuda")[None],
-                                                                             joint_names=self.joints))
+                                                                             joint_names=self.joints),
+                                      goal_state=gs)
         tr = res.interpolated_trajectory
         last = int(res.interpolated_last_tstep.flatten()[0]) if res.interpolated_last_tstep is not None else None
         pos = self.active(tr)[: (last + 1) if last is not None else None]
@@ -450,7 +469,7 @@ class Planner:
                 "max_joint_change_rad": float(np.abs(pos[-1] - q)[act].max()),
                 "suggested_duration_s": float(np.clip(TRAJ_TIME_SCALE * len(pos) * self.trajopt.config.interpolation_dt,
                                                       4.0, 16.0)),
-                "trajopt_success": bool(res.success.flatten()[0]),
+                "trajopt_success": bool(res.success.flatten()[0]), "goal_state_seeded": seed is not None,
                 "plan_success": free_err <= 0.04 and pen <= 0.0 and drift <= HELD_TOL_M}
 
     def chain(self, r):

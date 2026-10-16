@@ -5,7 +5,8 @@ Prerequisites: scenes/iss_full_v0.usda (scripts/build_iss_full.py, route anchors
 outputs/iss_full_v0/world/ (scripts/export_iss_world.py).
 Route: Node1 -> US Lab -> Node2 -> Columbus along the route anchors (hatch rims, the S1 Handrail_B, PLACEHOLDER
 handholds); anchored panel reach after Handrail_B. Outputs: outputs/iss_activity/ (gitignored): activity_spec.json,
-activity_run.json (+ _g1 import, log), activity_check.json, activity_summary.json.
+<tag>_run.json (+ _g1 import, log), <tag>_check.json (per-link penetration), <tag>_summary.json.
+Contacts are ON by default (PhysX resolves G1 vs ISS collisions; contact events are counted per link).
 History: ballistic push-off/flight/capture between sparse anchors was tried first and never captured (residual
 release spin of the floppy-legged G1 over 10-20 s flights); see docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md.
 """
@@ -31,10 +32,23 @@ def ask(port, req):
         return json.loads(fh.readline())
 
 
+def contact_totals(segs):
+    """PhysX contact-report events (G1 link vs ISS collider, per physics step) summed per link over the run."""
+    tot = {}
+    for s in segs:
+        for k, v in (s.get("contacts") or {}).items():
+            link = k.split(":", 1)[1]
+            tot[link] = tot.get(link, 0) + v
+    return dict(sorted(tot.items(), key=lambda x: -x[1]))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--port", type=int, default=47815)
-    ap.add_argument("--max-retries", type=int, default=4)
+    ap.add_argument("--max-retries", type=int, default=6)
+    ap.add_argument("--filter-contacts", action="store_true",
+                    help="collision-filter G1 vs ISS (S1.3/S1.4 condition); default: contacts ON, resolved by PhysX")
+    ap.add_argument("--tag", default="activity", help="output file prefix")
     args = ap.parse_args()
     py = os.environ.get("CUROBO_PYTHON")
     if not py:
@@ -66,15 +80,15 @@ def main():
                           "anchors": anchors, "planner_port": args.port, "max_retries": args.max_retries,
                           "panel": {"after_anchor": rail_b, "target": [panel[0], panel[1], panel[2] - 0.06]},
                           **CONTROL}}
-        (OUT / "activity_spec.json").write_text(json.dumps(spec), encoding="utf-8")
-        cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / "activity_spec.json"}" '
-               f'--out "{OUT / "activity_run.json"}" --record --filter-contacts')
-        with open(OUT / "activity_run.log", "w", encoding="utf-8") as rlog:
+        (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
+        cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
+               f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))
+        with open(OUT / (args.tag + "_run.log"), "w", encoding="utf-8") as rlog:
             subprocess.run(cmd, cwd=ROOT, shell=True, stdout=rlog, stderr=subprocess.STDOUT)
-        run = json.loads((OUT / "activity_run.json").read_text(encoding="utf-8"))
+        run = json.loads((OUT / (args.tag + "_run.json")).read_text(encoding="utf-8"))
         if run.get("frames"):
-            check = ask(args.port, {"mode": "check", "run": str(OUT / "activity_run.json")})
-            (OUT / "activity_check.json").write_text(json.dumps(check, indent=1), encoding="utf-8")
+            check = ask(args.port, {"mode": "check", "run": str(OUT / (args.tag + "_run.json")), "every": 3})
+            (OUT / (args.tag + "_check.json")).write_text(json.dumps(check, indent=1), encoding="utf-8")
     finally:
         srv.terminate()
         log.close()
@@ -85,8 +99,10 @@ def main():
                "capture_error_m": [round(s["hand_to_anchor_at_capture_m"], 4) for s in segs],
                "corrective_replans": [s.get("corrective_replans") for s in segs],
                "panel_reach": next((s["panel_reach"] for s in segs if s.get("panel_reach")), None),
-               "interference": {k: check[k] for k in ("checked", "interference_frames", "max_cost")} if check else None}
-    (OUT / "activity_summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+               "contacts_filtered": run.get("contacts_filtered"),
+               "contact_events_by_link": contact_totals(segs),
+               "penetration": {k: check[k] for k in ("sampled", "max_penetration_m", "frames_penetrating")} if check else None}
+    (OUT / (args.tag + "_summary.json")).write_text(json.dumps(summary, indent=1), encoding="utf-8")
     print(json.dumps(summary, indent=1))
 
 

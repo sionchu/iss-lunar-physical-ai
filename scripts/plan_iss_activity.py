@@ -56,6 +56,12 @@ def base_seed(pelvis_pos, pelvis_rot):
     return dict(zip(BASE, list(to_plan_pt(pelvis_pos)) + list((RP * pelvis_rot).as_euler("XYZ"))))
 
 
+MAX_SWING_RAD = 1.5    # largest actuated-joint change per step; executed slowly (SECONDS_PER_RAD), see step()
+SECONDS_PER_RAD = 3.0
+HELD_TOL_M = 0.02     # planner acceptance for the anchored hand (the fixed joint holds it in execution); the
+                      # warm-started solver lands at 1.1-1.6 cm, so 1 cm forced large global swings or no plan
+CLEARANCE_M = 0.04   # world-collision activation distance: plans keep this margin (execution deviates from plans)
+CENTRE_Z = -4.84     # shared module axis height in the scene frame (measured hatch centres)
 HANDS = {"left": "left_rubber_hand", "right": "right_rubber_hand"}
 BASE = ["base_j_x", "base_j_y", "base_j_z", "base_j_xtheta", "base_j_ytheta", "base_j_ztheta"]
 
@@ -110,12 +116,39 @@ class Planner:
         # use_cuda_graph=False: graph replay crashed (CUDA illegal address) after the per-request tool-pose criteria
         # and seed shapes changed; graphs are only a speed optimisation
         common = dict(robot=cfg, scene_model=self.scene, self_collision_check=False, position_tolerance=0.01,
-                      use_cuda_graph=False,
+                      use_cuda_graph=False, optimizer_collision_activation_distance=CLEARANCE_M,
                       orientation_tolerance=3.2)
         self.ik = InverseKinematics(InverseKinematicsCfg.create(num_seeds=64, **common))
         self.ik_local = InverseKinematics(InverseKinematicsCfg.create(num_seeds=8, **common))
         self.joints = list(self.ik.joint_names)
         self.gen = torch.Generator(device="cuda").manual_seed(0)   # deterministic seed perturbations
+        # geometric check independent of the optimizer: sphere model vs the ISS triangles (scene frame)
+        import trimesh
+        w = np.load(WORLD / "collision_world.npz")
+        tri = np.concatenate([w[k].reshape(-1, 3, 3) for k in w.files])
+        self.world = trimesh.proximity.ProximityQuery(
+            trimesh.Trimesh(vertices=tri.reshape(-1, 3), faces=np.arange(len(tri) * 3).reshape(-1, 3), process=False))
+        kin = cfg["kinematics"]
+        self.sphere_link = [n for n in kin["collision_link_names"] for _ in kin["collision_spheres"].get(n, [])]
+
+    def penetration(self, qvec):
+        """Per-link max penetration (m) of the cuRobo sphere model into the ISS meshes: sphere radius minus the
+        distance from its centre to the nearest triangle (unsigned: the open interior meshes have no inside)."""
+        ks = self.ik.compute_kinematics(JointState.from_position(torch.as_tensor(qvec, device="cuda")[None],
+                                                                joint_names=self.joints))
+        sp = ks.robot_spheres.reshape(-1, 4).cpu().numpy()
+        valid = sp[:, 3] > 0
+        if len(sp) != len(self.sphere_link):
+            raise RuntimeError(f"sphere/link map mismatch: {len(sp)} vs {len(self.sphere_link)}")
+        centres = from_plan_pt(sp[valid, :3])
+        _, dist, _ = self.world.on_surface(centres)
+        pen = sp[valid, 3] - dist
+        links = np.asarray(self.sphere_link)[valid]
+        out = {}
+        for ln, pv in zip(links, pen):
+            if pv > 0:
+                out[ln] = max(out.get(ln, 0.0), float(pv))
+        return {"max_m": float(max(pen.max(), 0.0)), "links": out}
 
     def criteria(self, anchor_hand, reach_hand, anchor_ori):
         c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.1] * 3, rpy=[0.3] * 3)}
@@ -172,13 +205,18 @@ class Planner:
         b = self.ik_local.config.num_seeds         # rollout buffers are sized for the solver's seed batch
         cc = self.ik_local.metrics_rollout.compute_metrics_from_action(qt.repeat(b, 1, 1)).costs_and_constraints.constraints
         vals = {n: float(v[0].max()) for n, v in zip(cc.names, cc.values) if n != "self_collision"}
-        return {"feasible": all(v <= 0.0 for v in vals.values()), "constraints": vals}
+        # Feasibility: joint limits from cuRobo, world collision from actual geometry (sphere model vs ISS triangles,
+        # no penetration). cuRobo's scene_collision term is > 0 already inside the CLEARANCE_M activation band, which
+        # froze the planner whenever the measured pose was within that band; the margin still shapes the optimizer.
+        pen = self.penetration(qt.reshape(-1).cpu().numpy())
+        vals["penetration_m"] = pen["max_m"]
+        return {"feasible": vals.get("cspace", 0.0) <= 0.0 and pen["max_m"] <= 0.0, "constraints": vals}
 
     def frame(self, q, feasible, goals, anchor):
-        """success = cuRobo feasibility (joint limits + ISS world collision; self-collision not checked) and anchored hand within 1 cm."""
+        """success = feasibility (joint limits + no penetration of the ISS meshes) and anchored hand within HELD_TOL_M."""
         k = self.fk(q)
         err = {n: float(np.linalg.norm(k[n][0] - np.asarray(goals[n][0]))) for n in goals if n != "pelvis"}
-        ok = feasible["feasible"] and err[HANDS[anchor]] <= 0.01
+        ok = feasible["feasible"] and err[HANDS[anchor]] <= HELD_TOL_M
         return {"q": {**LEG_TUCK, **{j: float(v) for j, v in zip(self.joints, q) if j not in BASE}},
                 "base": {j: float(v) for j, v in zip(self.joints, q) if j in BASE},
                 "pelvis_pos": k["pelvis"][0].tolist(), "pelvis_quat_wxyz": k["pelvis"][1].tolist(),
@@ -238,7 +276,8 @@ class Planner:
              HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)}
         for s in (self.ik, self.ik_local):
             s.update_tool_pose_criteria(c)
-        pel_goal = (a_prev + a_cur) / 2 + np.array([0, 0, -0.55])
+        mid = (a_prev + a_cur) / 2
+        pel_goal = np.array([mid[0], mid[1], CENTRE_Z + 0.15])   # aisle centre (was 0.55 m below the anchors)
         goals_f = {"pelvis": (pel_goal, fq), HANDS[held]: held_pose, HANDS[free]: (a_cur, fq)}
         q_cur, best, fallback = q.copy(), None, None
         act_i = [i for i, j in enumerate(self.joints) if j not in BASE]
@@ -252,41 +291,94 @@ class Planner:
                 fc = self.frame(qc, self.constraints(torch.as_tensor(qc, device="cuda").view(1, 1, -1)), goals_f, held)
                 err = fc["hand_goal_error_m"][HANDS[free]]
                 dq = float(np.abs(qc - q_cur)[act_i].max())
-                if fc["success"] and err <= 0.04 and dq <= 0.8:     # large joint swings do not execute on PD
+                if fc["success"] and err <= 0.04 and dq <= MAX_SWING_RAD:     # large joint swings do not execute on PD
                     if best is None or dq < best[0]:
                         best = (dq, qc)
                 elif fc["feasible"] and err <= 0.04 and (fallback is None or dq < fallback[0]):
                     fallback = (dq, qc)                          # reachable but large swing: smallest swing
             if best is not None:
                 break
-        q_final = best[1] if best is not None else (fallback[1] if fallback else q_cur)
+        partial = None
+        if best is None:
+            # full reach with the pelvis goal at its current position (the advancing pelvis term can make an
+            # otherwise reachable anchor fail the held-hand tolerance)
+            pel_now = self.fk(q_cur)["pelvis"][0]
+            goals_s = {"pelvis": (pel_now, fq), HANDS[held]: held_pose, HANDS[free]: (a_cur, fq)}
+            ql, okl = self.solve(goals_s, self.ik_local, q_cur)
+            for qc in [ql] + self.solve_candidates(goals_s, k=16):
+                fs_ = self.frame(qc, self.constraints(torch.as_tensor(qc, device="cuda").view(1, 1, -1)), goals_s, held)
+                dq = float(np.abs(qc - q_cur)[act_i].max())
+                if fs_["success"] and fs_["hand_goal_error_m"][HANDS[free]] <= 0.04 and dq <= MAX_SWING_RAD:
+                    if best is None or dq < best[0]:
+                        best, goals_f = (dq, qc), goals_s
+        march = []
+        if best is None:
+            # no direct solution: continuation. March the free hand (and the pelvis goal) toward the anchor in
+            # IK-consistent increments, each warm-started from the previous solution; the waypoints become the path.
+            qm = q_cur.copy()
+            for _ in range(16):
+                km = self.fk(qm)
+                pfm, pelm = km[HANDS[free]][0], km["pelvis"][0]
+                if np.linalg.norm(a_cur - pfm) <= 0.02:
+                    break
+                step_ok = False
+                for frac in (0.5, 0.3, 0.15):
+                    goals_p = {"pelvis": (pelm + frac * (pel_goal - pelm), fq), HANDS[held]: held_pose,
+                               HANDS[free]: (pfm + frac * (a_cur - pfm), fq)}
+                    ql, okl = self.solve(goals_p, self.ik_local, qm)
+                    fp_ = self.frame(ql, okl, goals_p, held)
+                    if fp_["success"] and fp_["hand_goal_error_m"][HANDS[free]] <= 0.04 and \
+                            float(np.abs(ql - qm)[act_i].max()) <= MAX_SWING_RAD:
+                        qm, step_ok = ql, True
+                        march.append(fp_)
+                        break
+                if not step_ok:
+                    break
+            if march:
+                d_total = float(np.linalg.norm(a_cur - self.fk(q_cur)[HANDS[free]][0]))
+                d_left = float(np.linalg.norm(a_cur - self.fk(qm)[HANDS[free]][0]))
+                partial = round(1.0 - d_left / max(d_total, 1e-6), 3)
+                best = (float(np.abs(qm - q_cur)[act_i].max()), qm)
+                goals_f = {"pelvis": (pel_goal, fq), HANDS[held]: held_pose, HANDS[free]: (a_cur, fq)}
+        q_final = best[1] if best is not None else q_cur                  # nothing safe: hold still
         f_final = self.frame(q_final, self.constraints(torch.as_tensor(q_final, device="cuda").view(1, 1, -1)), goals_f, held)
-        # execution path: per frame, local IK (held hand fixed, free hand and pelvis interpolated) seeded by the
-        # joint-space interpolation; the interpolation itself is used only where that IK fails (closed-chain drift)
         act = np.array([j not in BASE for j in self.joints])
-        k0, kf = self.fk(q_cur), self.fk(q_final)
-        frames, consistent = [], 0
-        for n in range(1, frames_n):
-            u = n / frames_n
-            qi = q_final.copy()
-            qi[act] = q_cur[act] + u * (q_final[act] - q_cur[act])
-            hand = k0[HANDS[free]][0] + u * (kf[HANDS[free]][0] - k0[HANDS[free]][0])
-            pel = k0["pelvis"][0] + u * (kf["pelvis"][0] - k0["pelvis"][0])
-            goals = {"pelvis": (pel, wxyz(rot(kf["pelvis"][1]))), HANDS[held]: held_pose, HANDS[free]: (hand, fq)}
-            qn, ok = self.solve(goals, self.ik_local, qi)
-            fn = self.frame(qn, ok, goals, held)
-            if fn["success"] and float(np.abs(qn - qi)[act].max()) <= 0.5:
-                frames.append(fn)
-                consistent += 1
-            else:
-                frames.append({"q": {**LEG_TUCK, **{j: float(v) for j, v in zip(self.joints, qi) if j not in BASE}}})
+        if march:                                    # continuation waypoints are already IK-consistent
+            frames, consistent = list(march[:-1]), len(march)
+        else:
+            # execution path: per frame, local IK (held hand fixed, free hand and pelvis interpolated) seeded by the
+            # joint-space interpolation; the interpolation itself is used only where that IK fails
+            k0, kf = self.fk(q_cur), self.fk(q_final)
+            frames, consistent = [], 0
+            for n in range(1, frames_n):
+                u = n / frames_n
+                qi = q_final.copy()
+                qi[act] = q_cur[act] + u * (q_final[act] - q_cur[act])
+                hand = k0[HANDS[free]][0] + u * (kf[HANDS[free]][0] - k0[HANDS[free]][0])
+                pel = k0["pelvis"][0] + u * (kf["pelvis"][0] - k0["pelvis"][0])
+                goals = {"pelvis": (pel, wxyz(rot(kf["pelvis"][1]))), HANDS[held]: held_pose, HANDS[free]: (hand, fq)}
+                qn, ok = self.solve(goals, self.ik_local, qi)
+                fn = self.frame(qn, ok, goals, held)
+                if fn["success"] and float(np.abs(qn - qi)[act].max()) <= 0.5:
+                    frames.append(fn)
+                    consistent += 1
+                else:
+                    frames.append({"q": {**LEG_TUCK, **{j: float(v) for j, v in zip(self.joints, qi) if j not in BASE}}})
         frames.append(f_final)
         free_err = f_final["hand_goal_error_m"][HANDS[free]]
-        return {"free_hand": free, "held_hand": held, "anchor": np.asarray(a_cur).tolist(), "frames": frames,
+        pens = [self.penetration(np.array([f.get("base", {}).get(j, 0.0) if j in BASE else f["q"].get(j, 0.0)
+                                           for j in self.joints], np.float32)) if "base" in f else None for f in frames]
+        path_pen = max((p["max_m"] for p in pens if p), default=0.0)
+        return {"path_max_penetration_m": path_pen,
+                "path_penetrating_links": sorted({ln for p in pens if p for ln in p["links"]}),
+                "path_frames_checked": sum(p is not None for p in pens),"free_hand": free, "held_hand": held, "anchor": np.asarray(a_cur).tolist(), "frames": frames,
                 "free_hand_final_error_m": free_err, "final_ik_found": best is not None,
-                "final_collision_free": f_final["feasible"], "path_consistent_frames": f"{consistent}/{frames_n - 1}",
+                "final_collision_free": f_final["feasible"], "path_consistent_frames": consistent, "march_waypoints": len(march),
                 "path_check": "IK-consistent frames are collision-checked; interpolated fallbacks are not",
-                "plan_success": best is not None and free_err <= 0.04}, q_final
+                "partial_fraction": partial,
+                "max_joint_change_rad": float(np.abs(q_final - q_cur)[act_i].max()),
+                "suggested_duration_s": float(np.clip(SECONDS_PER_RAD * np.abs(q_final - q_cur)[act_i].max(), 4.0, 8.0)),
+                "plan_success": best is not None and partial is None and free_err <= 0.04 and path_pen <= 0.0}, q_final
 
     def qvec(self, qdict, pelvis_pos, pelvis_quat):
         base = base_seed(pelvis_pos, rot(pelvis_quat))
@@ -323,22 +415,30 @@ class Planner:
                 "all_steps_ok": all(s["plan_success"] for s in steps)}
 
     def check(self, r):
-        """Post-hoc interference of executed poses: {"mode": "check", "run": <iss_activity_run.py json with frames>}.
-        Per frame: cuRobo sphere model (legs at the recorded joints are NOT represented: cuRobo locks them at the
-        tuck) against the ISS world; returns frames with scene_collision > 0."""
+        """Post-hoc geometry of a recorded run: {"mode": "check", "run": <run json>, "every": 3}. Per sampled frame
+        the sphere model at the recorded pelvis pose and joints (legs at the planner tuck) vs the ISS meshes."""
         run = json.loads(Path(r["run"]).read_text(encoding="utf-8"))
         f = run["frames"]
-        hits, worst = [], 0.0
-        for i, ((pp, pq), q) in enumerate(zip(f["pelvis"], f["q"])):
+        n, every = len(f["t"]), r.get("every", 3)
+        worst, per_link, counts = 0.0, {}, {"any": 0, "gt_1cm": 0, "gt_3cm": 0, "gt_5cm": 0}
+        sampled = 0
+        for i in range(0, n, every):
+            (pp, pq), q = f["pelvis"][i], f["q"][i]
             base = base_seed(pp, rot(pq))
-            qv = np.array([base[j] if j in base else q.get(j, 0.0) for j in self.joints], np.float32)
-            c = self.constraints(torch.as_tensor(qv, device="cuda").view(1, 1, -1))["constraints"].get("scene_collision", 0.0)
-            if c > 0:
-                hits.append({"t_s": f["t"][i], "phase": f["phase"][i], "cost": c})
-                worst = max(worst, c)
-        return {"frames": [], "checked": len(f["t"]), "interference_frames": len(hits), "max_cost": worst,
-                "hits": hits[:200], "note": "cuRobo scene_collision > 0 = sphere model within activation distance "
-                                            "of or penetrating the ISS meshes (legs at the planner tuck)"}
+            pen = self.penetration(np.array([base[j] if j in base else q.get(j, 0.0) for j in self.joints], np.float32))
+            sampled += 1
+            m = pen["max_m"]
+            worst = max(worst, m)
+            for k, th in (("any", 0.0), ("gt_1cm", 0.01), ("gt_3cm", 0.03), ("gt_5cm", 0.05)):
+                counts[k] += m > th
+            for ln, v in pen["links"].items():
+                pl = per_link.setdefault(ln, {"frames": 0, "max_m": 0.0})
+                pl["frames"] += 1
+                pl["max_m"] = max(pl["max_m"], v)
+        return {"frames": [], "recorded": n, "sampled": sampled, "every": every, "max_penetration_m": worst,
+                "frames_penetrating": counts, "per_link": dict(sorted(per_link.items(), key=lambda x: -x[1]["frames"])),
+                "note": "cuRobo G1 sphere model (legs at the planner tuck) vs ISS triangles; unsigned distance, so "
+                        "'penetration' = sphere radius minus distance to the nearest surface"}
 
 
 def serve(port, pl):
@@ -402,7 +502,7 @@ def main():
         t1 = time.time()
         res = getattr(pl, r["mode"])(r)
         res.update({"mode": r["mode"], "request": r, "solve_s": round(time.time() - t1, 2),
-                    "all_success": all(f["success"] for f in res["frames"])})
+                    "all_success": all(f.get("success", False) for f in res["frames"])})
         out["results"].append(res)
         if "anchor_hand" in r:
             print(r["mode"], "success", res["all_success"], "feasible", [f["feasible"] for f in res["frames"]][:3],

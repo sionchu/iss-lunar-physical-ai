@@ -489,7 +489,9 @@ def build_passages(stage, M, hatches):
     return out
 
 
-ROUTE_SPACING_M, ROUTE_STANDOFF_M = 0.50, 0.15   # 0.08 m left G1's hand spheres in the US Lab rack faces
+ROUTE_SPACING_M, ROUTE_STANDOFF_M = 0.50, 0.22   # 0.08/0.15 m: G1 hand spheres, then the wrist, hit the racks
+ROUTE_MIN_CLEARANCE_M = 0.20   # placeholders are lowered until their 3-D clearance to any surface reaches this
+RAIL_HAND_OFFSET_M = 0.10      # Handrail_B hand target, aisle side of the grip axis (0.06 m left < 0.05 m clearance)
 PLACEHOLDER_PROVENANCE = ("PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the "
                           "overhead mesh surface found by ray-casting the source meshes along the route centre line")
 
@@ -538,9 +540,27 @@ def build_route_anchors(stage, M, hatches):
     to_station = np.asarray(Gf.Matrix4d().SetRotate(Gf.Rotation(Gf.Vec3d(1, 0, 0), STATION_TO_SCENE_RX_DEG)).GetInverse())
     rail_b = stage.GetPrimAtPath(f"{ISS}/Affordances/USLab_S1Frame/Handrail_B_Graspable")
     rb = np.asarray(UsdGeom.Xformable(rail_b).ComputeLocalToWorldTransform(0).ExtractTranslation())
-    rb_hand = rb - up * 0.06
+    rb_hand = rb - up * RAIL_HAND_OFFSET_M
     i_rb = int(np.argmin([np.linalg.norm(s[:2] - rb[:2]) for s in samples]))
     root = UsdGeom.Xform.Define(stage, f"{ISS}/Affordances/Route").GetPrim()
+    import trimesh
+    cube = np.array([[x, y, z] for x in (-0.5, 0.5) for y in (-0.5, 0.5) for z in (-0.5, 0.5)])
+    ctri = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6],
+                     [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    boxes = []          # every collision box (US Lab proxies, passage walls) as triangles, scene frame
+    for prim in Usd.PrimRange(stage.GetPrimAtPath(f"{ISS}/Collision")):
+        if prim.IsA(UsdGeom.Cube):
+            m = np.asarray(UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default()))
+            v = (np.c_[cube * (UsdGeom.Cube(prim).GetSizeAttr().Get() or 2.0), np.ones(8)] @ m)[:, :3]
+            boxes.append(v[ctri])
+    allt = np.concatenate([tris] + [world_triangles(stage, f"{ISS}/Collision/{m}") for m in MODULES if m != "USLab"]
+                          + boxes)
+    prox = trimesh.proximity.ProximityQuery(trimesh.Trimesh(vertices=allt.reshape(-1, 3),
+                                                            faces=np.arange(len(allt) * 3).reshape(-1, 3), process=False))
+
+    def clearance(x):
+        return float(prox.on_surface(np.asarray([x]))[1][0])
+
     out, skipped = [], []
     for i, (s, dz) in enumerate(zip(samples, dist)):
         def in_span(k):
@@ -559,6 +579,8 @@ def build_route_anchors(stage, M, hatches):
             kind, prov = "hatch_rim", f"measured hatch {near[0]}: top edge of the smaller measured opening"
         elif np.isfinite(dz):
             p = s + up * (dz - ROUTE_STANDOFF_M)
+            while clearance(p) < ROUTE_MIN_CLEARANCE_M and p[2] > s[2]:   # lower toward the module axis
+                p = p - up * 0.01
         else:
             skipped.append(np.round(s, 3).tolist())          # ray leaves through an open port: no surface
             continue
@@ -573,6 +595,7 @@ def build_route_anchors(stage, M, hatches):
         g.CreateRelationship("iss:collisionProxy").SetTargets([Sdf.Path(f"{ISS}/Collision/{module}")])
         g.SetCustomDataByKey("provenance", prov)
         out.append({"index": len(out), "kind": kind, "pos_scene_m": np.round(p, 4).tolist(),
+                    "clearance_m": round(clearance(p), 4),
                     "surface_dist_m": round(float(dz), 4), "module": module})
     gaps = [float(np.linalg.norm(np.asarray(a["pos_scene_m"]) - np.asarray(b["pos_scene_m"]))) for a, b in zip(out, out[1:])]
     return {"anchors": out, "skipped_samples": skipped, "max_gap_m": round(max(gaps), 4) if gaps else None}

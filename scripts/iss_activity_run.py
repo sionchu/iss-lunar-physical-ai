@@ -238,10 +238,13 @@ def main():
                       "frames": ch.get("frames", 10)})
             if st.get("error"):
                 raise RuntimeError(f"planner: {st['error']}")
-            st.update({"step": i, "duration_s": ch.get("duration_s", 2.5)})
+            st.update({"step": i, "duration_s": max(ch.get("duration_s", 2.5), st.get("suggested_duration_s", 0.0))})
             contacts, res = {}, {"step": st["step"], "free_hand": st["free_hand"], "anchor": st["anchor"],
                                        "plan_success": st.get("plan_success"),
-                                       "plan_free_hand_error_m": st.get("free_hand_final_error_m")}
+                                       "plan_free_hand_error_m": st.get("free_hand_final_error_m"),
+                                       "plan_path_max_penetration_m": st.get("path_max_penetration_m"),
+                                       "plan_path_penetrating_links": st.get("path_penetrating_links"),
+                                       "plan_partial_fraction": st.get("partial_fraction")}
             art = E["art"]
             qs = np.array([[f["q"].get(d, 0.0) for d in dofs] for f in st["frames"]], dtype=np.float32)
             q0 = art.get_dof_positions().numpy()[0]
@@ -285,7 +288,7 @@ def main():
                 q0 = art.get_dof_positions().numpy()[0]
                 path = np.vstack([q0[None], np.array([[f["q"].get(dn, 0.0) for dn in dofs] for f in fix["frames"]],
                                                      dtype=np.float32)])
-                nst = round(ch.get("retry_duration_s", 2.0) / dt)
+                nst = round(max(ch.get("retry_duration_s", 2.0), fix.get("suggested_duration_s", 0.0)) / dt)
                 for k in range(nst):
                     x = smooth((k + 1) / nst) * (len(path) - 1)
                     i = min(int(x), len(path) - 2)

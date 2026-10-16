@@ -363,7 +363,7 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - Visual track only: no physics actor or physics run uses this scene yet.
 
 **Scene and source**
-- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `8db2d16c7ba032a22c36cad70d13d84b3f0e271780a54d73320302b95f39a446`; 2026-10-16, with the authored passages and route anchors; earlier builds: passages only `7c1ac76e…`, first build `d40d7bd3…`). It reuses the S1 helpers from `build_iss_microlab.py`.
+- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `c7d70481be302f969aff1e89ae58fcb996d26006f2d947ecba74e0cc26577249`; 2026-10-17, with the authored passages and clearance-placed route anchors; the 15-step evidence run used `8db2d16c…`; earlier builds: passages only `7c1ac76e…`, first build `d40d7bd3…`). It reuses the S1 helpers from `build_iss_microlab.py`.
 - Meshes: `scripts/import_iss_media.py` now converts all 7 interior modules plus handrails 8.5 / 21.5 / 30 / 41.5. Existing conversions are kept unless `--force`.
 - Source: `nasa/astrobee_media@1cb0620`. The sparse checkout was extended to `astrobee_handrail_8_5` and `astrobee_handrail_41_5` at the same commit.
 
@@ -535,6 +535,45 @@ A rerun with up to 8 corrective replans stopped silently after step 13: Kit exit
 - Rendered clip: `outputs/iss_activity/iss_activity_traverse.mp4` (1280×720, 10 fps, 1,735 frames, 173.5 s = simulated time). It is a replay of recorded link poses on a physics-disabled replica, labeled with these caveats.
   - QA: in the first render a free chase camera left the aisle, and 879 of 1,735 frames were black. The camera is now held on the module centre line, leaving 17 dark frames (1 %): the first frame and a short stretch at the Node1 hatchway.
   - The frames visibly show the G1 pressed close to the US Lab overhead racks, consistent with the interference figure. The tucked legs sometimes fill the foreground.
+
+### Collision-aware planning, contacts ON (2026-10-17)
+
+**Verdict: PARTIAL.**
+- With G1–ISS contacts **on** (resolved by PhysX), the traverse is collision-free over the steps it completes, but it gets **only 4–5 of 36 steps**: Node1 through the hatch into the aft US Lab.
+- It stalls when the trailing hand must pass the leading hand. No collision-free, small-swing closed-chain reach is found from those poses.
+- The contacts-filtered run above still reaches further (15 steps) but clips the structure.
+
+**What changed**
+- **Measurement:** per-link penetration depth replaces the unresolved "UNKNOWN depth". It is the cuRobo G1 sphere-model radius minus the distance to the nearest ISS triangle (`plan_iss_activity.py` `penetration()`, mode `check`).
+- **Planner** (`plan_iss_activity.py`):
+  - 4 cm world-collision activation margin in the optimizer.
+  - Feasibility judged by actual geometry: no sphere penetration, plus joint limits. The activation band had frozen the planner whenever the measured pose sat inside it.
+  - Pelvis goal at the aisle centre (centre line + 0.15 m), not 0.55 m below the overhead anchors.
+  - Every path frame is checked for penetration.
+  - Largest joint change per step 1.5 rad, executed at 3 s per rad (4–8 s).
+  - Held-hand acceptance 2 cm. The warm-started solver lands at 1.1–1.6 cm, and the fixed joint holds the hand in execution.
+  - When no direct solution exists, a continuation march takes IK-consistent increments toward the anchor; a full reach with the pelvis held is tried first.
+- **Executor** (`iss_activity_run.py`): contacts on by default (`--filter-contacts` restores the S1.3/S1.4 condition); slower moves per the planner's suggested duration; up to 10 corrective replans.
+- **Anchors** (`build_iss_full.py`):
+  - Placeholders are lowered toward the module axis until their 3-D clearance to every collider is at least 0.20 m. Vertical ray placement had left them 0.11–0.15 m from rack faces and the NASA mesh's own handrails, and the first clearance check missed the US Lab proxy boxes.
+  - The Handrail_B hand target is 0.10 m on the aisle side of the grip axis.
+  - The maximum anchor gap grew to 1.28 m, at the high Node2-centre and Columbus ceilings. `check_iss_full.py` is now **33/35**: the route-anchor check FAILs (gap > 1.0 m, limit unchanged), alongside the known Node3–Cupola FAIL.
+  - Capture radius (4 cm) unchanged.
+
+| Run | Contacts | Steps captured | Frames penetrating (any / > 1 cm / > 3 cm / > 5 cm) | Max penetration | PhysX contact events |
+| --- | --- | ---: | --- | ---: | --- |
+| `chain_online_run_r4` (above) | filtered | 15 | 68 % / 57 % / 27 % / 8 % | 0.105 m (torso) | n/a (filtered) |
+| `cf1` | on | 6 | — | — | 0 in steps 1–6; 8,908 in failed step 7 (wrist, head) |
+| `cf7` | on | 5 | — | — | 0 in all completed steps |
+| `cf8` (current code) | on | 4 | 10 % / 7.5 % / 0 % / 0 % | 0.027 m | 5,300, all in failed step 5 (left ankle 2,291, head 1,645, right wrist 1,289) |
+
+Penetration is sampled every 3rd recorded frame. cf8's numbers include its failed step.
+
+**Not done / UNKNOWN**
+- Steps beyond 5 with contacts on.
+- A closed-chain trajectory optimiser (cuRobo trajopt with the held-hand pose as a constraint) or a whole-body controller, either of which would replace joint PD tracking of IK waypoints. Both are NOT_RUN.
+- Hand–handhold contact remains a scripted fixed joint.
+- The sphere model is cuRobo's approximation of G1's geometry, and its legs are fixed at the planner's tuck.
 
 ## Claim ladder
 

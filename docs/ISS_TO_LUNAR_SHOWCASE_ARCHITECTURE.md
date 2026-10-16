@@ -363,7 +363,7 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - Visual track only: no physics actor or physics run uses this scene yet.
 
 **Scene and source**
-- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `7c1ac76eac2e8e18a52496c4169a9f79630f5b2f46ec682cf9f1fa3a88d60248`). It reuses the S1 helpers from `build_iss_microlab.py`.
+- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `8db2d16c7ba032a22c36cad70d13d84b3f0e271780a54d73320302b95f39a446`; 2026-10-16, with the authored passages and route anchors; earlier builds: passages only `7c1ac76e…`, first build `d40d7bd3…`). It reuses the S1 helpers from `build_iss_microlab.py`.
 - Meshes: `scripts/import_iss_media.py` now converts all 7 interior modules plus handrails 8.5 / 21.5 / 30 / 41.5. Existing conversions are kept unless `--force`.
 - Source: `nasa/astrobee_media@1cb0620`. The sparse checkout was extended to `astrobee_handrail_8_5` and `astrobee_handrail_41_5` at the same commit.
 
@@ -446,6 +446,93 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - No physics actor in this scene. Triangle-mesh contact behaviour is UNKNOWN.
 - Hatch vestibules, the US Lab origin and the Cupola hatch measurement: see above.
 - License: see the S1.1 provenance note (Apache-2.0 vs NASA Media Usage Guidelines, governing terms UNKNOWN).
+
+## Full-ISS activity v0: G1 hand-over-hand traverse (2026-10-16)
+
+**Verdict: PARTIAL.**
+- PhysX-executed hand-over-hand traverse: **15 of 36 steps captured**. That is Node1 → hatch and authored passage → US Lab, past Handrail_B, to x ≈ 4.2 m (about 7.2 m of the 16 m route).
+- Step 16 failed: the hand ended 0.121 m from its anchor after 4 corrective replans.
+- Node2 and Columbus were not reached.
+- The panel reach failed in execution: 0.21 m minimum hand distance, although planned to 8.7 mm.
+- In 68 % of the recorded frames, cuRobo's sphere model of the executed G1 pose is within 1 cm of the ISS meshes or penetrating them. Contacts were filtered, so G1 brushes or clips module geometry. Penetration depth is UNKNOWN.
+
+### Tool evaluation
+
+**cuRobo — adopted as an external planner.**
+- Source: `NVlabs/curobo` V2 @ `78fd485` (2026-09-10), Apache-2.0. Installed in a separate uv venv outside the repo and outside Isaac's python: torch 2.14+cu130, RTX 4070 Ti, driver 610.88.
+- Windows is not in the official install guide (Ubuntu only). On this machine the V2 runtime-compiled kernels passed its IK self-test: single 0.000 mm, batch 93/100, collision-free 50/50.
+- It ships `g1_29dof_rev_1_0`. Diffed against our canonical file, it adds `base_link` and differs in the `mid360` sensor frame; the 29 joints and all inertials are identical.
+- Use here: floating-base, collision-aware IK against the exported ISS meshes.
+- Workarounds needed, all recorded in `scripts/plan_iss_activity.py`:
+  - Planning frame rotated −90° about y: the base chain X→Y→Z is singular at head-first poses.
+  - CUDA graphs off: graph replay crashed with an illegal address after criteria and seed changes.
+  - Self-collision off: cuRobo's G1 sphere model self-collides at q = 0; Isaac also runs without self-collision. Feasibility is computed from the joint-limit and world-collision constraints only.
+  - Solver seeds reset per call, which makes plans deterministic (verified: identical repeat runs).
+
+**SOMA (`NVIDIA/soma-retargeter`, Apache-2.0) — not adopted for ISS.**
+- It is a kinematic retargeter of 1 g ground motion capture (BVH) to G1.
+- Its bundled motion data use an NVIDIA evaluation license.
+- No zero-g IVA motion data exist, so it does not fit this phase. It is a candidate for lunar walking (S5).
+
+### What was tried first and failed: ballistic flights
+
+- Method: push off an anchor, free drift, then a scripted capture at the next sparse anchor (hatch rims and the two S1 rails).
+- Five variants all failed to capture: head-first pose, consistent launch plans, orientation hold at release, Jacobian-transpose terminal reach, and the rotated planning frame.
+- Why: the free-floating G1 with PD-held legs leaves the anchor with 0.1–0.2 rad/s of residual rotation. Over 10–20 s flights the tucked or straight legs hit hatch frames, or the hand missed by 0.07–2.2 m.
+- Last record: `outputs/fail_fix/drive_ballistic_last.log`.
+
+### Method that partly works: closed-loop hand-over-hand
+
+**Route anchors** — `build_iss_full.py`, affordance layer only, 37 anchors, maximum gap 0.97 m:
+- 4 `hatch_rim` anchors on the top edge of the measured hatch openings.
+- The S1 `Handrail_B`.
+- 32 `graspable_placeholder` anchors, 0.15 m below the overhead surface found by ray-casting the source meshes along the route centre line. Each carries `customData provenance = "PLACEHOLDER: no public ISS handrail layout; …"`.
+- `check_iss_full.py`: 34/35 (29 PASS, 5 PASS_WITH_AUTHORED_PROXY, 1 FAIL = Node3–Cupola, unchanged).
+
+**Planner**
+- `scripts/plan_iss_activity.py --serve`, a local cuRobo service.
+- Inputs come from `scripts/export_iss_world.py`: 61 colliders, 141,056 triangles, plus the anchors.
+- Legs are locked in a tuck (hip pitch −0.6, knee 1.2, ankle pitch −0.6 rad), because a 1.3 m G1 cannot pass 1.26 m hatches straight.
+- Each step:
+  1. Local IK from the current joints; otherwise global multi-seed candidates with an actuated-joint swing ≤ 0.8 rad, held hand ≤ 1 cm, free hand ≤ 4 cm, collision-free.
+  2. Intermediate frames from IK seeded by joint interpolation, falling back to interpolation where that IK fails.
+  3. The pelvis orientation goal moves only 30 % toward head-first per step.
+
+**Executor**
+- `scripts/iss_activity_run.py`. Physics is gate v3: PGS, dt 1/240, 16/4 iterations, zero gravity, damping and friction. Joint PD 300/30 on all DOFs (S1.4 used 100/10, which lagged too much).
+- For every step it asks the planner to replan from the **measured** state, tracks the plan for 4 s, then holds 1 s.
+- If the free hand is more than 4 cm from its anchor, up to 4 corrective replans follow.
+- Capture is a scripted world fixed joint at the hand; the previous anchor joint is then disabled.
+- `--filter-contacts` collision-filters G1 against the ISS colliders, as in S1.3/S1.4.
+- End-to-end runner: `scripts/iss_activity_drive.py`. Replay renderer: `scripts/render_iss_activity.py`.
+
+### Evidence run
+
+`outputs/iss_activity/chain_online_run_r4.json` (gitignored); scene SHA-256 `8db2d16c…`, G1 `c0ae739c…`.
+
+| Metric | Value |
+| --- | --- |
+| Steps captured / attempted / route | 15 / 16 / 36 |
+| Simulated time | 173.5 s |
+| Capture error, median / max | 16.7 / 39.8 mm (radius 40 mm) |
+| Corrective replans | 24 in total (0–4 per step) |
+| Pelvis error vs. plan after a move, median / max | 0.17 / 0.71 m |
+| Steps whose final plan met all criteria | 7 of 16 (the rest used the smallest-swing fallback) |
+| Highest link speed at a capture | 0.41 m/s |
+| Panel reach from Handrail_B | planned 8.7 mm; executed minimum 0.21 m (FAIL) |
+| Interference (cuRobo sphere model, legs at the tuck) | 3,537 / 5,205 frames within 1 cm or penetrating (68 %); mostly during moves |
+
+A rerun with up to 8 corrective replans stopped silently after step 13: Kit exited without a traceback and without writing its result. The cause is UNKNOWN; it resembles the earlier unexplained S1.4 render stop.
+
+### Not validated / UNKNOWN
+
+- Grasps are scripted fixed joints; there is no finger, palm or handhold contact.
+- Placeholders are virtual handholds, not ISS hardware.
+- G1–ISS contacts were filtered, and the interference above shows that the executed motion is not collision-free. Penetration depth is UNKNOWN.
+- Whole-body joint PD lies outside the momentum-gate condition (gate doc, 1b).
+- Planner and executor disagree by a median of 0.17 m in pelvis position, from closed-chain PD tracking of kinematic plans. A torque-level or whole-body controller would be needed.
+- Steps 16–36, the Node2/Columbus segment and the panel task were not completed.
+- Rendered clip: `outputs/iss_activity/iss_activity_traverse.mp4`. It is a replay of recorded link poses on a physics-disabled replica, labeled with these caveats.
 
 ## Claim ladder
 

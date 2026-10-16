@@ -1,0 +1,94 @@
+"""Run the full-ISS G1 hand-over-hand traverse end to end (planner service + Isaac PhysX run + interference check).
+
+CUROBO_PYTHON=<cuRobo V2 venv python> python scripts/iss_activity_drive.py [--port 47815] [--max-retries 4]
+Prerequisites: scenes/iss_full_v0.usda (scripts/build_iss_full.py, route anchors in its build_report.json) and
+outputs/iss_full_v0/world/ (scripts/export_iss_world.py).
+Route: Node1 -> US Lab -> Node2 -> Columbus along the route anchors (hatch rims, the S1 Handrail_B, PLACEHOLDER
+handholds); anchored panel reach after Handrail_B. Outputs: outputs/iss_activity/ (gitignored): activity_spec.json,
+activity_run.json (+ _g1 import, log), activity_check.json, activity_summary.json.
+History: ballistic push-off/flight/capture between sparse anchors was tried first and never captured (residual
+release spin of the floppy-legged G1 over 10-20 s flights); see docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md.
+"""
+import argparse
+import json
+import os
+import socket
+import subprocess
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "outputs" / "iss_activity"
+ISAAC = os.environ.get("ISAAC_PYTHON", r"C:\isaacsim\python.bat")
+CONTROL = {"gains": [300.0, 30.0], "frames": 10, "duration_s": 4.0, "hold_s": 1.0, "settle_s": 0.4,
+           "retry_duration_s": 2.5}
+
+
+def ask(port, req):
+    with socket.create_connection(("127.0.0.1", port)) as s, s.makefile("rw", encoding="utf-8") as fh:
+        fh.write(json.dumps(req) + "\n")
+        fh.flush()
+        return json.loads(fh.readline())
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--port", type=int, default=47815)
+    ap.add_argument("--max-retries", type=int, default=4)
+    args = ap.parse_args()
+    py = os.environ.get("CUROBO_PYTHON")
+    if not py:
+        raise SystemExit("set CUROBO_PYTHON to the cuRobo V2 venv python")
+    OUT.mkdir(parents=True, exist_ok=True)
+    route = json.loads((ROOT / "outputs/iss_full_v0/build_report.json").read_text(encoding="utf-8"))["route_anchors"]
+    anchors = [a["pos_scene_m"] for a in route["anchors"]]
+    world = json.loads((ROOT / "outputs/iss_full_v0/world/anchors.json").read_text(encoding="utf-8"))
+    panel = world["targets"][0]["centre_m"]
+    rail_b = next(a["index"] for a in route["anchors"] if a["kind"] == "graspable_rail")
+
+    log = open(OUT / "planner_service.log", "w", encoding="utf-8")
+    srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port)], cwd=ROOT,
+                           stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    check = None
+    try:
+        for _ in range(180):
+            if "serving" in (OUT / "planner_service.log").read_text(encoding="utf-8", errors="replace"):
+                break
+            time.sleep(1)
+        else:
+            raise SystemExit("planner service did not start")
+        st = ask(args.port, {"mode": "start", "pelvis_pos": [anchors[0][0] - 0.45, 0.0, -4.84], "facing": [1, 0, 0],
+                             "anchor_hand": "right", "anchor_point": anchors[0]})["frames"][0]
+        spec = {"chain": {"start_state": {"q": st["q"], "pelvis_pos": st["pelvis_pos"],
+                                          "pelvis_quat_wxyz": st["pelvis_quat_wxyz"],
+                                          "anchor": {"hand": "right", **st["hands"]["right"]}},
+                          "start_plan": {k: st[k] for k in ("success", "feasible", "hand_goal_error_m")},
+                          "anchors": anchors, "planner_port": args.port, "max_retries": args.max_retries,
+                          "panel": {"after_anchor": rail_b, "target": [panel[0], panel[1], panel[2] - 0.06]},
+                          **CONTROL}}
+        (OUT / "activity_spec.json").write_text(json.dumps(spec), encoding="utf-8")
+        cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / "activity_spec.json"}" '
+               f'--out "{OUT / "activity_run.json"}" --record --filter-contacts')
+        with open(OUT / "activity_run.log", "w", encoding="utf-8") as rlog:
+            subprocess.run(cmd, cwd=ROOT, shell=True, stdout=rlog, stderr=subprocess.STDOUT)
+        run = json.loads((OUT / "activity_run.json").read_text(encoding="utf-8"))
+        if run.get("frames"):
+            check = ask(args.port, {"mode": "check", "run": str(OUT / "activity_run.json")})
+            (OUT / "activity_check.json").write_text(json.dumps(check, indent=1), encoding="utf-8")
+    finally:
+        srv.terminate()
+        log.close()
+    segs = run.get("segments", [])
+    summary = {"error": run.get("error"), "completed_steps": run.get("completed_steps"),
+               "total_steps": run.get("total_steps"), "sim_time_s": run.get("sim_time_s"),
+               "last_pelvis_pos": next((s["pelvis_pos"] for s in reversed(segs) if s.get("pelvis_pos")), None),
+               "capture_error_m": [round(s["hand_to_anchor_at_capture_m"], 4) for s in segs],
+               "corrective_replans": [s.get("corrective_replans") for s in segs],
+               "panel_reach": next((s["panel_reach"] for s in segs if s.get("panel_reach")), None),
+               "interference": {k: check[k] for k in ("checked", "interference_frames", "max_cost")} if check else None}
+    (OUT / "activity_summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    print(json.dumps(summary, indent=1))
+
+
+if __name__ == "__main__":
+    main()

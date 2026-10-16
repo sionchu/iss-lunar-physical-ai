@@ -489,6 +489,95 @@ def build_passages(stage, M, hatches):
     return out
 
 
+ROUTE_SPACING_M, ROUTE_STANDOFF_M = 0.50, 0.15   # 0.08 m left G1's hand spheres in the US Lab rack faces
+PLACEHOLDER_PROVENANCE = ("PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the "
+                          "overhead mesh surface found by ray-casting the source meshes along the route centre line")
+
+
+def ray_hits(tris, origins, d):
+    """Distance along unit direction d from each origin to the nearest triangle (Moller-Trumbore), inf if none."""
+    e1, e2 = tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]
+    h = np.cross(d, e2)
+    a = np.einsum("ij,ij->i", e1, h)
+    ok = np.abs(a) > 1e-12
+    e1, e2, h, a, v0 = e1[ok], e2[ok], h[ok], a[ok], tris[ok, 0]
+    out = []
+    for o in origins:
+        s = o - v0
+        u = np.einsum("ij,ij->i", s, h) / a
+        q = np.cross(s, e1)
+        v = (q @ d) / a
+        t = np.einsum("ij,ij->i", e2, q) / a
+        m = (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 1e-6)
+        out.append(float(t[m].min()) if m.any() else np.inf)
+    return np.asarray(out)
+
+
+def build_route_anchors(stage, M, hatches):
+    """Hand-over-hand route anchors on the overhead side of the route centre line (affordance layer only).
+
+    Route: Node1 -> US Lab -> Node2 -> Columbus through the measured hatch centres. Anchors every ROUTE_SPACING_M:
+    'hatch_rim' between the two measured hatch end planes (+-0.10 m): the measured opening's top edge minus the standoff
+    (passage walls are authored cubes, not ray-cast); Handrail_B (the S1 rail)
+    replaces the nearest one, all others are 'graspable_placeholder' (no public handrail layout exists).
+    """
+    hc = {r["pair"]: np.asarray(r["centre_m"]) for r in hatches if r.get("centre_m")}
+    hrow = {r["pair"]: r for r in hatches if r.get("centre_m")}
+    pts = [hc["Node1-USLab"] + np.array([-0.70, 0, 0]), hc["Node1-USLab"], hc["USLab-Node2"],
+           np.array([hc["Node2-Columbus"][0], hc["USLab-Node2"][1], hc["USLab-Node2"][2]]),
+           hc["Node2-Columbus"], hc["Node2-Columbus"] + np.array([0, -1.0, 0])]
+    samples = []
+    for a, b in zip(pts[:-1], pts[1:]):
+        n = max(1, int(np.ceil(np.linalg.norm(b - a) / ROUTE_SPACING_M)))
+        samples += [a + (b - a) * k / n for k in range(n)]
+    samples.append(pts[-1])
+    tris = np.concatenate([world_triangles(stage, f"{ISS}/Visual/{m}") for m in MODULES] +
+                          [world_triangles(stage, f"{ISS}/Visual/Passages")])
+    up = np.array([0.0, 0.0, 1.0])
+    dist = ray_hits(tris, np.asarray(samples), up)
+    to_station = np.asarray(Gf.Matrix4d().SetRotate(Gf.Rotation(Gf.Vec3d(1, 0, 0), STATION_TO_SCENE_RX_DEG)).GetInverse())
+    rail_b = stage.GetPrimAtPath(f"{ISS}/Affordances/USLab_S1Frame/Handrail_B_Graspable")
+    rb = np.asarray(UsdGeom.Xformable(rail_b).ComputeLocalToWorldTransform(0).ExtractTranslation())
+    rb_hand = rb - up * 0.06
+    i_rb = int(np.argmin([np.linalg.norm(s[:2] - rb[:2]) for s in samples]))
+    root = UsdGeom.Xform.Define(stage, f"{ISS}/Affordances/Route").GetPrim()
+    out, skipped = [], []
+    for i, (s, dz) in enumerate(zip(samples, dist)):
+        def in_span(k):
+            ax = "xyz".index(hrow[k]["axis"])
+            lo, hi = sorted((hrow[k]["a"]["end_m"], hrow[k]["b"]["end_m"]))
+            return lo - 0.10 <= s[ax] <= hi + 0.10 and np.linalg.norm((s - hc[k])[[0, 1]]) < 0.8
+        near = [k for k in hc if in_span(k)]       # between the two measured hatch end planes (+-0.10 m)
+        kind, prov, vis = "graspable_placeholder", PLACEHOLDER_PROVENANCE, None
+        if i == i_rb:
+            p, kind, prov = rb_hand, "graspable_rail", "S1 Handrail_B (NASA handrail mesh, S1 placement)"
+            vis = f"{ISS}/Visual/USLab_S1Frame/Handrail_B"
+        elif near:
+            r = hrow[near[0]]
+            top = min(r["a"]["size_m"][1], r["b"]["size_m"][1]) / 2
+            p = np.array([s[0], s[1], hc[near[0]][2] + top - ROUTE_STANDOFF_M])
+            kind, prov = "hatch_rim", f"measured hatch {near[0]}: top edge of the smaller measured opening"
+        elif np.isfinite(dz):
+            p = s + up * (dz - ROUTE_STANDOFF_M)
+        else:
+            skipped.append(np.round(s, 3).tolist())          # ray leaves through an open port: no surface
+            continue
+        module = min(MODULES, key=lambda m: np.linalg.norm(
+            np.asarray(UsdGeom.BBoxCache(0, ["default", "render"]).ComputeWorldBound(
+                stage.GetPrimAtPath(f"{ISS}/Visual/{m}")).ComputeAlignedRange().GetMidpoint()) - s))
+        g = S1.box(stage, f"{root.GetPath()}/Anchor_{len(out):02d}", tuple((np.r_[p, 1.0] @ to_station)[:3]),
+                   (0.04, 0.04, 0.04), M["grasp"] if kind != "graspable_placeholder" else M["waypoint"]).GetPrim()
+        g.CreateAttribute("iss:affordance", Sdf.ValueTypeNames.Token).Set(kind)
+        g.CreateAttribute("iss:routeIndex", Sdf.ValueTypeNames.Int).Set(len(out))
+        g.CreateRelationship("iss:visualSource").SetTargets([Sdf.Path(vis or f"{ISS}/Visual/{module}")])
+        g.CreateRelationship("iss:collisionProxy").SetTargets([Sdf.Path(f"{ISS}/Collision/{module}")])
+        g.SetCustomDataByKey("provenance", prov)
+        out.append({"index": len(out), "kind": kind, "pos_scene_m": np.round(p, 4).tolist(),
+                    "surface_dist_m": round(float(dz), 4), "module": module})
+    gaps = [float(np.linalg.norm(np.asarray(a["pos_scene_m"]) - np.asarray(b["pos_scene_m"]))) for a, b in zip(out, out[1:])]
+    return {"anchors": out, "skipped_samples": skipped, "max_gap_m": round(max(gaps), 4) if gaps else None}
+
+
 LAYERS = {
     #             Visual  Collision  Affordances  Task
     "visual":     (True,  False,     False,       False),
@@ -558,6 +647,7 @@ def main():
     strategy = build_collision(stage, poses, vis["USLab"])
     build_affordances(stage, M, vis["USLab"], hatches)
     passages = build_passages(stage, M, hatches)
+    route = build_route_anchors(stage, M, hatches)
     bbc = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
     boxes = {}
     for name in MODULES:
@@ -573,7 +663,8 @@ def main():
               "poses": poses, "hatch_tolerance": HATCH_TOL, "hatches_visual_origin": hatches,
               "hatches_uslab_collision_origin": hatches_col, "collision_strategy": strategy, "cameras": cams,
               "module_bbox_scene_m": {k: [v[0].round(3).tolist(), v[1].round(3).tolist()] for k, v in boxes.items()},
-              "known_gaps": KNOWN_GAPS, "authored_passages": passages, "passage_provenance": PASSAGE_PROVENANCE}
+              "known_gaps": KNOWN_GAPS, "authored_passages": passages, "passage_provenance": PASSAGE_PROVENANCE,
+              "route_anchors": route, "placeholder_provenance": PLACEHOLDER_PROVENANCE}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "build_report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     for r in hatches:

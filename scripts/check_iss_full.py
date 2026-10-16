@@ -42,8 +42,9 @@ import build_iss_full as B  # noqa: E402
 results = []
 
 
-def check(name, ok, detail=""):
-    results.append({"check": name, "pass": bool(ok), "detail": detail})
+def check(name, ok, detail="", status=None):
+    """status: PASS | FAIL | PASS_WITH_AUTHORED_PROXY (counts as passing, reported separately)."""
+    results.append({"check": name, "pass": bool(ok), "status": status or ("PASS" if ok else "FAIL"), "detail": detail})
 
 
 ISS = B.ISS
@@ -136,14 +137,46 @@ check("2 graspable rails + maintenance target + hatch affordances",
       kinds.count("graspable") == 2 and "maintenance_target" in kinds and kinds.count("hatch") >= 1, str(kinds))
 
 # hatch alignment, re-measured on the composed stage
+# Source-mesh alignment (module meshes only). A gap that fails it is re-checked against the authored passage proxy:
+# passage ends within the axial tolerance of both hatch end planes and its centre within the centre tolerance of both
+# hatch centres -> PASS_WITH_AUTHORED_PROXY (tolerances unchanged), otherwise FAIL.
 rows = B.measure_hatches(stage, vis_root)
+vset.SetVariantSelection("collision")
+bbc.Clear()
+tol_c, tol_a = B.HATCH_TOL["centre_offset_m"], B.HATCH_TOL["axial_gap_m"]
 for r in rows:
+    name = (f"hatch {r['pair']} aligned (centre offset <= {tol_c} m, |axial gap| <= {tol_a} m)")
     if r["within_tolerance"] is None:
         check(f"hatch {r['pair']} measurable", False, f"a={(r['a'] or {}).get('status')} b={(r['b'] or {}).get('status')}")
-    else:
-        check(f"hatch {r['pair']} aligned (centre offset <= {B.HATCH_TOL['centre_offset_m']} m, "
-              f"|axial gap| <= {B.HATCH_TOL['axial_gap_m']} m)", r["within_tolerance"],
-              f"offset {r['centre_offset_m']} m, gap {r['axial_gap_m']} m, openings {r['a']['size_m']} / {r['b']['size_m']}")
+        continue
+    src = f"source mesh: offset {r['centre_offset_m']} m, gap {r['axial_gap_m']} m, openings {r['a']['size_m']} / {r['b']['size_m']}"
+    if r["within_tolerance"]:
+        check(name, True, src, "PASS")
+        continue
+    a_name, b_name = r["pair"].split("-")
+    pp = stage.GetPrimAtPath(f"{col_root}/Passages/Passage_{a_name}_{b_name}")
+    if not pp.IsValid():
+        check(name, False, src + "; no authored passage")
+        continue
+    box = bbc.ComputeWorldBound(pp).ComputeAlignedRange()
+    ax = "xyz".index(r["axis"])
+    lat = [i for i in range(3) if i != ax]
+    ends = sorted((r["a"]["end_m"], r["b"]["end_m"]))
+    res_axial = max(abs(box.GetMin()[ax] - ends[0]), abs(box.GetMax()[ax] - ends[1]))
+    pc = np.asarray(box.GetMidpoint())
+    res_centre = max(float(np.linalg.norm(pc[lat] - np.asarray(r[k]["centre_m"])[lat])) for k in ("a", "b"))
+    ok = res_axial <= tol_a and res_centre <= tol_c
+    check(name, ok, src + f"; authored passage: end residual {res_axial:.4f} m, centre residual {res_centre:.4f} m",
+          "PASS_WITH_AUTHORED_PROXY" if ok else "FAIL")
+passage_prims = [p for root in (f"{vis_root}/Passages", f"{col_root}/Passages") if stage.GetPrimAtPath(root).IsValid()
+                 for p in Usd.PrimRange(stage.GetPrimAtPath(root)) if p.GetPath() != root]
+passage_prims += [p for p in aff if p.GetAttribute("iss:affordance").Get() == "passage"]
+unlabeled = [str(p.GetPath()) for p in passage_prims
+             if not str(p.GetCustomDataByKey("provenance") or "").startswith("AUTHORED_PROXY")]
+check("every authored passage prim carries provenance customData (AUTHORED_PROXY)", passage_prims and not unlabeled,
+      f"prims={len(passage_prims)} unlabeled={unlabeled[:3]}")
+vset.SetVariantSelection("visual")
+bbc.Clear()
 
 # cameras and lighting
 cams = [p for p in Usd.PrimRange(stage.GetPrimAtPath("/World/Cameras")) if p.IsA(UsdGeom.Camera)]
@@ -172,11 +205,13 @@ check("momentum gate configs unchanged vs HEAD", gate == 0)
 out = ROOT / "outputs" / "iss_full_v0"
 out.mkdir(parents=True, exist_ok=True)
 report = {"scene": str(SCENE.relative_to(ROOT)), "mode": "isaac" if args.isaac else "pxr", "handrails": rails,
-          "hatches": rows, "passed": sum(r["pass"] for r in results), "total": len(results), "results": results}
+          "hatches": rows, "passed": sum(r["pass"] for r in results), "total": len(results),
+          "status_counts": {s: sum(r["status"] == s for r in results) for s in ("PASS", "PASS_WITH_AUTHORED_PROXY", "FAIL")},
+          "results": results}
 (out / f"scene_check{'_isaac' if args.isaac else ''}.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
 for r in results:
-    print(("PASS " if r["pass"] else "FAIL ") + r["check"] + (f"  [{r['detail']}]" if r["detail"] else ""))
-print(f"{report['passed']}/{report['total']} checks passed")
+    print(f"{r['status']} " + r["check"] + (f"  [{r['detail']}]" if r["detail"] else ""))
+print(f"{report['passed']}/{report['total']} checks passed; " + json.dumps(report["status_counts"]))
 code = 0 if report["passed"] == report["total"] else 1
 if args.isaac:
     app.close()

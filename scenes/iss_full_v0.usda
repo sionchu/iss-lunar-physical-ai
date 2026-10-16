@@ -134,6 +134,411 @@ def Xform "World" (
                         uniform token[] xformOpOrder = ["xformOp:transform"]
                     }
                 }
+
+                def "Passages"
+                {
+                    def Xform "Passage_Node1_USLab" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 0.03, 1.32)
+                            double3 xformOp:translate = (-2.207333572990592, 0.6452999999999994, 4.8386)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 0.03, 1.32)
+                            double3 xformOp:translate = (-2.207333572990592, -0.6447000000000006, 4.8386)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 1.32, 0.03)
+                            double3 xformOp:translate = (-2.207333572990592, 0.0002999999999993284, 5.483599999999999)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 1.32, 0.03)
+                            double3 xformOp:translate = (-2.207333572990592, 0.0002999999999994864, 4.1936)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_USLab_Node2" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 0.03, 1.32)
+                            double3 xformOp:translate = (6.374758414555064, 0.6463999999999994, 4.8368)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 0.03, 1.32)
+                            double3 xformOp:translate = (6.374758414555064, -0.6536000000000006, 4.8368)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 1.33, 0.03)
+                            double3 xformOp:translate = (6.374758414555064, -0.0036000000000006712, 5.4818)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 1.33, 0.03)
+                            double3 xformOp:translate = (6.374758414555064, -0.0036000000000005134, 4.191800000000001)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node2_Columbus" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.23883435, 1.26)
+                            double3 xformOp:translate = (10.3372, 2.232612720338232, 4.8425)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.23883435, 1.26)
+                            double3 xformOp:translate = (11.5672, 2.232612720338232, 4.8425)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.23883435, 0.03)
+                            double3 xformOp:translate = (10.9522, 2.2326127203382318, 5.4575000000000005)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.23883435, 0.03)
+                            double3 xformOp:translate = (10.9522, 2.232612720338232, 4.2275)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node2_JEM_PM" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.20220722, 1.32)
+                            double3 xformOp:translate = (10.308200000000001, -2.2341196683711133, 4.8357)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.20220722, 1.32)
+                            double3 xformOp:translate = (11.5982, -2.2341196683711133, 4.8357)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.32, 0.20220722, 0.03)
+                            double3 xformOp:translate = (10.9532, -2.2341196683711138, 5.480700000000001)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.32, 0.20220722, 0.03)
+                            double3 xformOp:translate = (10.9532, -2.2341196683711133, 4.1907)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node1_Node3" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.41089156, 1.26)
+                            double3 xformOp:translate = (-5.0819, -2.3443819822643035, 4.8479)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.41089156, 1.26)
+                            double3 xformOp:translate = (-3.8419, -2.3443819822643035, 4.8479)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.27, 0.41089156, 0.03)
+                            double3 xformOp:translate = (-4.4619, -2.344381982264304, 5.4629)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.27, 0.41089156, 0.03)
+                            double3 xformOp:translate = (-4.4619, -2.3443819822643035, 4.2329)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node3_Cupola" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 1.26, 0.20540401)
+                            double3 xformOp:translate = (-5.0962000000000005, -6.695800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 1.26, 0.20540401)
+                            double3 xformOp:translate = (-3.8662, -6.695800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.03, 0.20540401)
+                            double3 xformOp:translate = (-4.4812, -6.080800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["MaterialBindingAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            rel material:binding = </World/Looks/AuthoredProxyPassage>
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.03, 0.20540401)
+                            double3 xformOp:translate = (-4.4812, -7.310800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+                }
             }
 
             def Xform "Collision"
@@ -611,6 +1016,399 @@ def Xform "World" (
                         }
                     }
                 }
+
+                def "Passages"
+                {
+                    def Xform "Passage_Node1_USLab" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 0.03, 1.32)
+                            double3 xformOp:translate = (-2.207333572990592, 0.6452999999999994, 4.8386)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 0.03, 1.32)
+                            double3 xformOp:translate = (-2.207333572990592, -0.6447000000000006, 4.8386)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 1.32, 0.03)
+                            double3 xformOp:translate = (-2.207333572990592, 0.0002999999999993284, 5.483599999999999)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.23268141, 1.32, 0.03)
+                            double3 xformOp:translate = (-2.207333572990592, 0.0002999999999994864, 4.1936)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_USLab_Node2" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 0.03, 1.32)
+                            double3 xformOp:translate = (6.374758414555064, 0.6463999999999994, 4.8368)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 0.03, 1.32)
+                            double3 xformOp:translate = (6.374758414555064, -0.6536000000000006, 4.8368)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 1.33, 0.03)
+                            double3 xformOp:translate = (6.374758414555064, -0.0036000000000006712, 5.4818)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.13509618, 1.33, 0.03)
+                            double3 xformOp:translate = (6.374758414555064, -0.0036000000000005134, 4.191800000000001)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node2_Columbus" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.23883435, 1.26)
+                            double3 xformOp:translate = (10.3372, 2.232612720338232, 4.8425)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.23883435, 1.26)
+                            double3 xformOp:translate = (11.5672, 2.232612720338232, 4.8425)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.23883435, 0.03)
+                            double3 xformOp:translate = (10.9522, 2.2326127203382318, 5.4575000000000005)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.23883435, 0.03)
+                            double3 xformOp:translate = (10.9522, 2.232612720338232, 4.2275)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node2_JEM_PM" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.20220722, 1.32)
+                            double3 xformOp:translate = (10.308200000000001, -2.2341196683711133, 4.8357)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.20220722, 1.32)
+                            double3 xformOp:translate = (11.5982, -2.2341196683711133, 4.8357)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.32, 0.20220722, 0.03)
+                            double3 xformOp:translate = (10.9532, -2.2341196683711138, 5.480700000000001)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.32, 0.20220722, 0.03)
+                            double3 xformOp:translate = (10.9532, -2.2341196683711133, 4.1907)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node1_Node3" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.41089156, 1.26)
+                            double3 xformOp:translate = (-5.0819, -2.3443819822643035, 4.8479)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 0.41089156, 1.26)
+                            double3 xformOp:translate = (-3.8419, -2.3443819822643035, 4.8479)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.27, 0.41089156, 0.03)
+                            double3 xformOp:translate = (-4.4619, -2.344381982264304, 5.4629)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.27, 0.41089156, 0.03)
+                            double3 xformOp:translate = (-4.4619, -2.3443819822643035, 4.2329)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+
+                    def Xform "Passage_Node3_Cupola" (
+                        customData = {
+                            string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                        }
+                    )
+                    {
+                        custom string iss:collisionStrategy = "authored_proxy: four primitive box walls (square tube), not from source mesh"
+
+                        def Cube "Wallun" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 1.26, 0.20540401)
+                            double3 xformOp:translate = (-5.0962000000000005, -6.695800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallup" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (0.03, 1.26, 0.20540401)
+                            double3 xformOp:translate = (-3.8662, -6.695800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvn" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.03, 0.20540401)
+                            double3 xformOp:translate = (-4.4812, -6.080800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+
+                        def Cube "Wallvp" (
+                            prepend apiSchemas = ["PhysicsCollisionAPI"]
+                            customData = {
+                                string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                            }
+                        )
+                        {
+                            double size = 1
+                            float3 xformOp:rotateXYZ = (0, 0, 0)
+                            float3 xformOp:scale = (1.26, 0.03, 0.20540401)
+                            double3 xformOp:translate = (-4.4812, -7.310800000000001, 6.735244675733042)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                        }
+                    }
+                }
             }
 
             def Xform "Affordances"
@@ -791,6 +1589,132 @@ def Xform "World" (
                     float3 xformOp:rotateXYZ = (0, 0, 0)
                     float3 xformOp:scale = (1.2, 1.2, 0.01)
                     double3 xformOp:translate = (-4.4812, -6.695800000000001, 6.735199999999999)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_Node1_USLab" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_Node1_USLab>
+                    custom float2 iss:passageInnerOpening_m = (1.26, 1.26)
+                    custom float iss:passageLength_m = 0.23268141
+                    custom string iss:status = "AUTHORED_PROXY"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_Node1_USLab>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (-2.207333572990592, 0.0002999999999994074, 4.8386)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_USLab_Node2" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_USLab_Node2>
+                    custom float2 iss:passageInnerOpening_m = (1.27, 1.26)
+                    custom float iss:passageLength_m = 0.13509618
+                    custom string iss:status = "AUTHORED_PROXY"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_USLab_Node2>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (6.374758414555064, -0.0036000000000005923, 4.8368)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_Node2_Columbus" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_Node2_Columbus>
+                    custom float2 iss:passageInnerOpening_m = (1.2, 1.2)
+                    custom float iss:passageLength_m = 0.23883435
+                    custom string iss:status = "AUTHORED_PROXY"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_Node2_Columbus>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (10.9522, 2.232612720338232, 4.8425)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_Node2_JEM_PM" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_Node2_JEM_PM>
+                    custom float2 iss:passageInnerOpening_m = (1.26, 1.26)
+                    custom float iss:passageLength_m = 0.20220722
+                    custom string iss:status = "AUTHORED_PROXY"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_Node2_JEM_PM>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (10.9532, -2.2341196683711133, 4.8357)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_Node1_Node3" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_Node1_Node3>
+                    custom float2 iss:passageInnerOpening_m = (1.21, 1.2)
+                    custom float iss:passageLength_m = 0.41089156
+                    custom string iss:status = "AUTHORED_PROXY"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_Node1_Node3>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (-4.4619, -2.3443819822643035, 4.8479)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                }
+
+                def Cube "Passage_Node3_Cupola" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                    customData = {
+                        string provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"
+                    }
+                )
+                {
+                    custom token iss:affordance = "passage"
+                    custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Passages/Passage_Node3_Cupola>
+                    custom float2 iss:passageInnerOpening_m = (1.2, 1.2)
+                    custom float iss:passageLength_m = 0.20540401
+                    custom string iss:status = "UNKNOWN: hatch centres offset beyond tolerance and/or the second opening may be a window, not a hatch"
+                    custom rel iss:visualSource = </World/Environment/ISS/Visual/Passages/Passage_Node3_Cupola>
+                    rel material:binding = </World/Looks/AffordanceWaypoint>
+                    double size = 1
+                    float3 xformOp:rotateXYZ = (0, 0, 0)
+                    float3 xformOp:scale = (0.05, 0.05, 0.05)
+                    double3 xformOp:translate = (-4.4812, -6.695800000000001, 6.735244675733042)
                     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                 }
             }
@@ -1206,6 +2130,20 @@ def Xform "World" (
                 color3f inputs:diffuseColor = (0.92, 0.92, 0.92)
                 float inputs:metallic = 0
                 float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+
+        def Material "AuthoredProxyPassage"
+        {
+            token outputs:surface.connect = </World/Looks/AuthoredProxyPassage/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.55, 0.6, 0.68)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.7
                 token outputs:surface
             }
         }
@@ -1693,6 +2631,243 @@ def Xform "World" (
                                 }
                             }
                         }
+
+                        over "Passages"
+                        {
+                            over "Passage_Node1_USLab"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_USLab_Node2"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_Columbus"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_JEM_PM"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node1_Node3"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node3_Cupola"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionContext> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     over "Affordances"
@@ -2099,6 +3274,243 @@ def Xform "World" (
                                 }
                             }
                         }
+
+                        over "Passages"
+                        {
+                            over "Passage_Node1_USLab"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_USLab_Node2"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_Columbus"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_JEM_PM"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node1_Node3"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node3_Cupola"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     over "Affordances"
@@ -2496,6 +3908,243 @@ def Xform "World" (
                             over "Cupola_Int_Cabin"
                             {
                                 over "Untitled_528_mesh" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+                        }
+
+                        over "Passages"
+                        {
+                            over "Passage_Node1_USLab"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_USLab_Node2"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_Columbus"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node2_JEM_PM"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node1_Node3"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+                            }
+
+                            over "Passage_Node3_Cupola"
+                            {
+                                over "Wallun" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallup" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvn" (
+                                    prepend apiSchemas = ["MaterialBindingAPI"]
+                                )
+                                {
+                                    rel material:binding = </World/Looks/CollisionProxyBounds> (
+                                        bindMaterialAs = "strongerThanDescendants"
+                                    )
+                                }
+
+                                over "Wallvp" (
                                     prepend apiSchemas = ["MaterialBindingAPI"]
                                 )
                                 {

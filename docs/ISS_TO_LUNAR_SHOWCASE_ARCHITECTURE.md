@@ -354,13 +354,16 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 
 ## Full ISS interior v0 receipt (2026-10-15)
 
-**Verdict:** the scene contract holds on the full USOS interior available in the source, except for hatch alignment.
-- `scripts/check_iss_full.py`: **27/33 PASS** in both pxr and `--isaac` (Kit, headless).
-- The 6 FAILs are the 6 inter-module hatch axial gaps. They exceed the 0.10 m tolerance, which was fixed before measuring and was not changed.
+**Verdict (2026-10-16, with authored hatch passages):** `scripts/check_iss_full.py` gives **33/34** in both pxr and `--isaac` (Kit, headless).
+- 28 PASS on source data.
+- 5 **PASS_WITH_AUTHORED_PROXY**: hatch gaps bridged by authored passages and reported separately from source-mesh PASS.
+- 1 FAIL: Node3–Cupola, UNKNOWN.
+- Source-mesh hatch alignment alone still fails all six axial gaps. The predeclared tolerances (centre ≤ 0.05 m, |gap| ≤ 0.10 m) are unchanged.
+- First build (2026-10-15, no passages): 27/33.
 - Visual track only: no physics actor or physics run uses this scene yet.
 
 **Scene and source**
-- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `d40d7bd3b178162a17be8c95a4a7b95c78becff7027cd3be919c864114a31d70`). It reuses the S1 helpers from `build_iss_microlab.py`.
+- Built by `scripts/build_iss_full.py` (pxr only; regenerate, do not hand-edit) as `scenes/iss_full_v0.usda` (LF, SHA-256 `7c1ac76eac2e8e18a52496c4169a9f79630f5b2f46ec682cf9f1fa3a88d60248`). It reuses the S1 helpers from `build_iss_microlab.py`.
 - Meshes: `scripts/import_iss_media.py` now converts all 7 interior modules plus handrails 8.5 / 21.5 / 30 / 41.5. Existing conversions are kept unless `--force`.
 - Source: `nasa/astrobee_media@1cb0620`. The sparse checkout was extended to `astrobee_handrail_8_5` and `astrobee_handrail_41_5` at the same commit.
 
@@ -401,6 +404,29 @@ Remaining accepted limitations: authored primitives read as clean CG rather than
 - All axial gaps fail. With the US Lab at its URDF collision origin, Lab–Node2 closes to 0.031 m but Node1–Lab opens to 0.337 m. The Node1–Node2 total stays about 0.37 m, so neither origin closes both.
 - The likely reason is that the meshes omit the berthing vestibules (inference, UNKNOWN).
 - The Cupola-side opening (1.76 m) probably measured a window aperture rather than its hatch, so that row is UNKNOWN.
+
+**Authored hatch passages (2026-10-16, owner decision)**
+- Module poses are unchanged (still exactly the Astrobee URDF).
+- Each measured hatch gap is bridged by a square tube (`Passage_<A>_<B>`) with these elements:
+  - four primitive box walls (0.03 m) in `Visual/Passages` (plain material `AuthoredProxyPassage`);
+  - the same walls with `CollisionAPI` in `Collision/Passages`;
+  - a `passage` affordance marker with its inner opening, length and status.
+- Inner opening = the smaller measured opening of the two modules per lateral axis. Centre = midway between the two measured hatch centres. Length = the measured gap.
+- Every passage prim carries `customData provenance = "AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch openings, not NASA drawings"`. The checker verifies this on all 66 prims.
+
+| Passage | Inner opening m | Length m | Centre residual vs both hatches m | Checker |
+| --- | --- | ---: | ---: | --- |
+| Node1–USLab | 1.26×1.26 | 0.233 | 0.015 | PASS_WITH_AUTHORED_PROXY |
+| USLab–Node2 | 1.27×1.26 | 0.135 | 0.007 | PASS_WITH_AUTHORED_PROXY |
+| Node2–Columbus | 1.20×1.20 | 0.239 | 0.022 | PASS_WITH_AUTHORED_PROXY |
+| Node2–JEM PM | 1.26×1.26 | 0.202 | 0.019 | PASS_WITH_AUTHORED_PROXY |
+| Node1–Node3 | 1.21×1.20 | 0.411 | 0.005 | PASS_WITH_AUTHORED_PROXY |
+| Node3–Cupola | 1.20×1.20 | 0.205 | **0.063** | **FAIL, status UNKNOWN** (hatch centres 0.125 m apart; the Cupola opening may be a window) |
+
+- The passage-end residual is 0 by construction (the ends are the measured planes). Only the centre residual is an independent check.
+- Re-rendered: `USLab_to_Node2_ThroughHatch.png` (visual) and `USLab_to_Node2_ThroughHatch_collision.png`, `Node1_Wide_collision.png` (collision).
+- The square passage meets Node 2's rounded hatch frame with small visible corner gaps. This is visual only; the collision walls are continuous.
+- No CBM drawings were used. Passage length and shape are placeholders until a NASA source is found.
 
 **Runtime (Isaac Sim 6.0.1, RTX 4070 Ti 12 GB, driver 610.88, headless)**
 - Scene opens in about 1 s.

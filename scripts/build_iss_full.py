@@ -426,6 +426,69 @@ def build_cameras(stage, boxes, hatches):
             for k, (e, t, f) in cams.items()}
 
 
+PASSAGE_PROVENANCE = ("AUTHORED_PROXY: CBM vestibule missing from source mesh; dimensions from measured hatch "
+                      "openings, not NASA drawings")
+PASSAGE_WALL_M = 0.03
+
+
+def build_passages(stage, M, hatches):
+    """Square-tube vestibule proxies spanning each measured hatch gap (Visual walls, Collision walls, affordance).
+
+    Inner opening = the smaller measured opening of the two modules per lateral axis; centred between the two
+    measured hatch centres; length = from the first module's hatch end plane to the second's. Module poses are not
+    touched. Every prim carries customData provenance = PASSAGE_PROVENANCE.
+    """
+    to_station = np.asarray(Gf.Matrix4d().SetRotate(Gf.Rotation(Gf.Vec3d(1, 0, 0), STATION_TO_SCENE_RX_DEG)).GetInverse())
+    mat = S1.material(stage, "/World/Looks/AuthoredProxyPassage", (0.55, 0.60, 0.68), 0.7)
+    out = []
+    for row in hatches:
+        if not row.get("centre_m") or row["axial_gap_m"] <= 0:
+            continue
+        a_name, b_name = row["pair"].split("-")
+        ax = "xyz".index(row["axis"])
+        lat = [i for i in range(3) if i != ax]
+        inner = [min(row["a"]["size_m"][k], row["b"]["size_m"][k]) for k in range(2)]
+        s0, s1 = sorted((row["a"]["end_m"], row["b"]["end_m"]))
+        c = np.asarray(row["centre_m"], dtype=float)
+        c[ax] = (s0 + s1) / 2
+        unknown = row["centre_offset_m"] > HATCH_TOL["centre_offset_m"] or max(row["b"]["size_m"]) > 1.5
+        name = f"Passage_{a_name}_{b_name}"
+        walls = []
+        for k in range(2):            # two walls normal to each lateral axis
+            for sgn in (-1, 1):
+                wc, ws = c.copy(), [0.0, 0.0, 0.0]
+                ws[ax] = s1 - s0
+                ws[lat[k]] = PASSAGE_WALL_M
+                ws[lat[1 - k]] = inner[1 - k] + 2 * PASSAGE_WALL_M
+                wc[lat[k]] += sgn * (inner[k] / 2 + PASSAGE_WALL_M / 2)
+                walls.append((f"Wall{'uv'[k]}{'n' if sgn < 0 else 'p'}", (np.r_[wc, 1.0] @ to_station)[:3], ws))
+        for layer in ("Visual", "Collision"):
+            root = UsdGeom.Xform.Define(stage, f"{ISS}/{layer}/Passages/{name}").GetPrim()
+            for wname, wc, ws in walls:
+                g = S1.box(stage, f"{root.GetPath()}/{wname}", tuple(wc), tuple(ws), mat if layer == "Visual" else None).GetPrim()
+                if layer == "Collision":
+                    UsdPhysics.CollisionAPI.Apply(g)
+                g.SetCustomDataByKey("provenance", PASSAGE_PROVENANCE)
+            root.SetCustomDataByKey("provenance", PASSAGE_PROVENANCE)
+            if layer == "Collision":
+                root.CreateAttribute("iss:collisionStrategy", Sdf.ValueTypeNames.String).Set(
+                    "authored_proxy: four primitive box walls (square tube), not from source mesh")
+        m = S1.box(stage, f"{ISS}/Affordances/{name}", tuple((np.r_[c, 1.0] @ to_station)[:3]),
+                   (0.05, 0.05, 0.05), M["waypoint"]).GetPrim()   # marker at the passage centre
+        m.CreateAttribute("iss:affordance", Sdf.ValueTypeNames.Token).Set("passage")
+        m.CreateAttribute("iss:passageInnerOpening_m", Sdf.ValueTypeNames.Float2).Set(Gf.Vec2f(*inner))
+        m.CreateAttribute("iss:passageLength_m", Sdf.ValueTypeNames.Float).Set(float(s1 - s0))
+        m.CreateAttribute("iss:status", Sdf.ValueTypeNames.String).Set(
+            "UNKNOWN: hatch centres offset beyond tolerance and/or the second opening may be a window, not a hatch"
+            if unknown else "AUTHORED_PROXY")
+        m.CreateRelationship("iss:collisionProxy").SetTargets([Sdf.Path(f"{ISS}/Collision/Passages/{name}")])
+        m.CreateRelationship("iss:visualSource").SetTargets([Sdf.Path(f"{ISS}/Visual/Passages/{name}")])
+        m.SetCustomDataByKey("provenance", PASSAGE_PROVENANCE)
+        out.append({"pair": row["pair"], "inner_opening_m": inner, "length_m": round(float(s1 - s0), 4),
+                    "centre_scene_m": c.round(4).tolist(), "status": "UNKNOWN" if unknown else "AUTHORED_PROXY"})
+    return out
+
+
 LAYERS = {
     #             Visual  Collision  Affordances  Task
     "visual":     (True,  False,     False,       False),
@@ -494,6 +557,7 @@ def main():
     hatches_col = measure_hatches(stage, f"{ISS}/Visual", shift={"USLab": shift_scene})
     strategy = build_collision(stage, poses, vis["USLab"])
     build_affordances(stage, M, vis["USLab"], hatches)
+    passages = build_passages(stage, M, hatches)
     bbc = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
     boxes = {}
     for name in MODULES:
@@ -509,7 +573,7 @@ def main():
               "poses": poses, "hatch_tolerance": HATCH_TOL, "hatches_visual_origin": hatches,
               "hatches_uslab_collision_origin": hatches_col, "collision_strategy": strategy, "cameras": cams,
               "module_bbox_scene_m": {k: [v[0].round(3).tolist(), v[1].round(3).tolist()] for k, v in boxes.items()},
-              "known_gaps": KNOWN_GAPS}
+              "known_gaps": KNOWN_GAPS, "authored_passages": passages, "passage_provenance": PASSAGE_PROVENANCE}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "build_report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     for r in hatches:

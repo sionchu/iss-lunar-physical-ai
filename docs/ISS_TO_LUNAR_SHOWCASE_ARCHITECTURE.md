@@ -532,7 +532,9 @@ A rerun with up to 8 corrective replans stopped silently after step 13: Kit exit
 - Whole-body joint PD lies outside the momentum-gate condition (gate doc, 1b).
 - Planner and executor disagree by a median of 0.17 m in pelvis position, from closed-chain PD tracking of kinematic plans. A torque-level or whole-body controller would be needed.
 - Steps 16–36, the Node2/Columbus segment and the panel task were not completed.
-- Rendered clip: `outputs/iss_activity/iss_activity_traverse.mp4`. It is a replay of recorded link poses on a physics-disabled replica, labeled with these caveats.
+- Rendered clip: `outputs/iss_activity/iss_activity_traverse.mp4` (1280×720, 10 fps, 1,735 frames, 173.5 s = simulated time). It is a replay of recorded link poses on a physics-disabled replica, labeled with these caveats.
+  - QA: in the first render a free chase camera left the aisle, and 879 of 1,735 frames were black. The camera is now held on the module centre line, leaving 17 dark frames (1 %): the first frame and a short stretch at the Node1 hatchway.
+  - The frames visibly show the G1 pressed close to the US Lab overhead racks, consistent with the interference figure. The tucked legs sometimes fill the foreground.
 
 ## Claim ladder
 

@@ -107,7 +107,22 @@ rep.orchestrator.set_capture_on_play(False)
 stage.GetPrimAtPath("/World").GetVariantSets().GetVariantSet("truthLayer").SetVariantSelection("visual")
 
 pel = np.array([p for p, _ in FR["pelvis"]])
-# chase camera: 1.6 m behind the smoothed pelvis along the smoothed travel direction, 0.25 m below (aisle side)
+# camera eye is kept on the module centre line (route anchors projected to the shared module axis height
+# z = -4.84 m): a free chase offset left the aisle (QA: 879 of 1735 frames black in the first render)
+spec = json.loads(Path(REC["spec"]).read_text(encoding="utf-8"))["chain"]
+CL = np.array([[a[0], a[1], -4.84] for a in spec["anchors"]])
+
+
+def on_centreline(p):
+    best, bd = None, 1e9
+    for a, b in zip(CL[:-1], CL[1:]):
+        ab = b - a
+        u = 0.0 if ab @ ab < 1e-9 else float(np.clip((p - a) @ ab / (ab @ ab), 0, 1))
+        c = a + u * ab
+        if np.linalg.norm(p - c) < bd:
+            best, bd = c, np.linalg.norm(p - c)
+    return best
+# chase camera: 1.6 m behind the smoothed pelvis along the smoothed travel direction, snapped to the centre line
 K = 45
 smooth = np.array([pel[max(0, i - K):i + K + 1].mean(axis=0) for i in range(len(pel))])
 step_at = []                                 # step number / status per frame from the segment end times
@@ -123,7 +138,7 @@ for i in range(0, len(FR["t"]), args.every):
     j0, j1 = max(0, i - 30), min(len(smooth) - 1, i + 30)
     d = smooth[j1] - smooth[j0]
     d = d / np.linalg.norm(d) if np.linalg.norm(d) > 1e-3 else np.array([1.0, 0, 0])
-    eye = smooth[i] - 1.6 * d + np.array([0, 0, -0.25])
+    eye = on_centreline(smooth[i] - 1.6 * d) + np.array([0, 0, 0.10])
     cam_op.Set(Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*(smooth[i] + 0.4 * d)), Gf.Vec3d(0, 0, 1)).GetInverse())
     app.update()
     rep.orchestrator.step(rt_subframes=args.subframes, delta_time=0.0, pause_timeline=True)

@@ -661,6 +661,15 @@ tj3 details: capture error 0.5–3.8 cm (radius 4 cm); 0–4 corrective replans 
 - An 18 mm lens, a render-only fill light on the camera, and a partial grey-world white balance. The 4800 K lights read brown.
 - The overlay shows the route, per-step contact events, and contacts ON/filtered, read from the run record (it previously always said "filtered").
 - In the 16-still previews of `jem` and `node3`, no frame showed only a wall or black.
+- Rendered at 2× speed, 20 fps, 1280×720 (outputs/iss_activity/, gitignored):
+
+  | Clip | Length | Frames | Mean luminance (every 5th frame, 0–255) | Frames below 25 or above 200 |
+  | --- | ---: | ---: | ---: | ---: |
+  | `full_jem.mp4` | 113 s | 2,256 | 52 | 0 |
+  | `full_node3.mp4` | 118 s | 2,360 | 53 | 0 |
+  | `full_main.mp4` | 139 s | 2,789 | 59 | 0 |
+
+- A 16-frame contact sheet of `main` was inspected: the robot is in frame throughout.
 
 ## Claim ladder
 

@@ -3,7 +3,7 @@
 CUROBO_PYTHON=<cuRobo V2 venv python> python scripts/iss_activity_drive.py [--port 47815] [--max-retries 4]
 Prerequisites: scenes/iss_full_v0.usda (scripts/build_iss_full.py, route anchors in its build_report.json) and
 outputs/iss_full_v0/world/ (scripts/export_iss_world.py).
-Route: Node1 -> US Lab -> Node2 -> Columbus along the route anchors (hatch rims, the S1 Handrail_B, PLACEHOLDER
+Routes (--route): main = Node1 -> US Lab -> Node2 -> Columbus along the route anchors (hatch rims, the S1 Handrail_B, PLACEHOLDER
 handholds); anchored panel reach after Handrail_B. Outputs: outputs/iss_activity/ (gitignored): activity_spec.json,
 <tag>_run.json (+ _g1 import, log), <tag>_check.json (per-link penetration), <tag>_summary.json.
 Contacts are ON by default (PhysX resolves G1 vs ISS collisions; contact events are counted per link).
@@ -49,6 +49,15 @@ def main():
     ap.add_argument("--filter-contacts", action="store_true",
                     help="collision-filter G1 vs ISS (S1.3/S1.4 condition); default: contacts ON, resolved by PhysX")
     ap.add_argument("--tag", default="activity", help="output file prefix")
+    ap.add_argument("--route", default="main", help="scenario route in build_report.json routes: main (Node1 -> US Lab "
+                    "-> Node2 -> Columbus, with the panel reach), jem (Node2 -> JEM PM), node3 (Node1 -> Node3)")
+    ap.add_argument("--gains", type=float, nargs=2, default=CONTROL["gains"], metavar=("KP", "KD"))
+    ap.add_argument("--velocity-ff", action="store_true", help="joint velocity targets = d(position target)/dt")
+    ap.add_argument("--time-scale", type=float, default=1.0, help="multiplier on every move/retry duration")
+    ap.add_argument("--hold-s", type=float, default=CONTROL["hold_s"])
+    ap.add_argument("--retry-mode", default="step", choices=["step", "traj_step"],
+                    help="planner mode for corrective replans")
+    ap.add_argument("--max-steps", type=int, help="stop after this many steps (ablations)")
     ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
                     help="traj_step: cuRobo trajectory optimisation with the held hand constrained along the path "
                          "(default); step: chained IK waypoints")
@@ -57,14 +66,16 @@ def main():
     if not py:
         raise SystemExit("set CUROBO_PYTHON to the cuRobo V2 venv python")
     OUT.mkdir(parents=True, exist_ok=True)
-    route = json.loads((ROOT / "outputs/iss_full_v0/build_report.json").read_text(encoding="utf-8"))["route_anchors"]
+    rep = json.loads((ROOT / "outputs/iss_full_v0/build_report.json").read_text(encoding="utf-8"))
+    route = rep["routes"][args.route]
     anchors = [a["pos_scene_m"] for a in route["anchors"]]
     world = json.loads((ROOT / "outputs/iss_full_v0/world/anchors.json").read_text(encoding="utf-8"))
     panel = world["targets"][0]["centre_m"]
-    rail_b = next(a["index"] for a in route["anchors"] if a["kind"] == "graspable_rail")
+    rail_b = next((a["index"] for a in route["anchors"] if a["kind"] == "graspable_rail"), None)
 
     log = open(OUT / "planner_service.log", "w", encoding="utf-8")
-    srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port)], cwd=ROOT,
+    srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port), "--frame-offset",
+                            *map(str, route["frame_offset_m"])], cwd=ROOT,
                            stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
     check = None
     try:
@@ -74,16 +85,19 @@ def main():
             time.sleep(1)
         else:
             raise SystemExit("planner service did not start")
-        st = ask(args.port, {"mode": "start", "pelvis_pos": [anchors[0][0] - 0.45, 0.0, -4.84], "facing": [1, 0, 0],
+        st = ask(args.port, {"mode": "start", "pelvis_pos": route["start_pelvis_m"], "facing": route["facing"],
                              "anchor_hand": "right", "anchor_point": anchors[0]})["frames"][0]
         spec = {"chain": {"start_state": {"q": st["q"], "pelvis_pos": st["pelvis_pos"],
                                           "pelvis_quat_wxyz": st["pelvis_quat_wxyz"],
                                           "anchor": {"hand": "right", **st["hands"]["right"]}},
                           "start_plan": {k: st[k] for k in ("success", "feasible", "hand_goal_error_m")},
                           "anchors": anchors, "planner_port": args.port, "max_retries": args.max_retries,
-                          "planner_mode": args.planner_mode, "retry_mode": "step",
-                          "panel": {"after_anchor": rail_b, "target": [panel[0], panel[1], panel[2] - 0.06]},
-                          **CONTROL}}
+                          "planner_mode": args.planner_mode, "retry_mode": args.retry_mode,
+                          "panel": ({"after_anchor": rail_b, "target": [panel[0], panel[1], panel[2] - 0.06]}
+                                    if rail_b is not None else None),
+                          "route": args.route, "max_steps": args.max_steps,
+                          **CONTROL, "gains": args.gains, "hold_s": args.hold_s,
+                          "velocity_feedforward": args.velocity_ff, "time_scale": args.time_scale}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
         cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
                f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))
@@ -97,11 +111,17 @@ def main():
         srv.terminate()
         log.close()
     segs = run.get("segments", [])
-    summary = {"error": run.get("error"), "completed_steps": run.get("completed_steps"),
+    summary = {"route": args.route, "control": run.get("control"), "error": run.get("error"), "completed_steps": run.get("completed_steps"),
                "total_steps": run.get("total_steps"), "sim_time_s": run.get("sim_time_s"),
                "last_pelvis_pos": next((s["pelvis_pos"] for s in reversed(segs) if s.get("pelvis_pos")), None),
                "capture_error_m": [round(s["hand_to_anchor_at_capture_m"], 4) for s in segs],
                "corrective_replans": [s.get("corrective_replans") for s in segs],
+               "hand_to_anchor_after_move_m": [round(s["hand_to_anchor_after_move_m"], 3) for s in segs],
+               "max_joint_error_rad": [round(s["move_tracking"]["max_joint_error_rad"], 3) for s in segs],
+               "pelvis_error_m": [s["move_tracking"]["pelvis_error_m"] and round(s["move_tracking"]["pelvis_error_m"], 3)
+                                  for s in segs],
+               "drive_saturation_fraction": [round(s["drive_saturation"]["fraction_of_samples"], 3) for s in segs],
+               "contact_events_by_step": [sum((s.get("contacts") or {}).values()) for s in segs],
                "panel_reach": next((s["panel_reach"] for s in segs if s.get("panel_reach")), None),
                "contacts_filtered": run.get("contacts_filtered"),
                "contact_events_by_link": contact_totals(segs),

@@ -62,6 +62,9 @@ HELD_TOL_M = 0.02     # planner acceptance for the anchored hand (the fixed join
                       # warm-started solver lands at 1.1-1.6 cm, so 1 cm forced large global swings or no plan
 TRAJ_TIME_SCALE = 1.0  # trajectory time multiplier for joint-PD tracking
 CLEARANCE_M = 0.04   # world-collision activation distance: plans keep this margin (execution deviates from plans)
+HELD_RPY_W = 1.0     # held-hand orientation weight in IK; 5 (to cut the planned held-hand rotation) lost reachability:
+                     # 2 vs 6 of 12 steps (ab_cc3 vs ab_cc2); the closed-chain refinement corrects the rotation instead
+CC_TOL_M = 0.015     # closed-chain refinement target: free hand placed through the measured held-hand pose
 CENTRE_Z = -4.84     # shared module axis height in the scene frame (measured hatch centres)
 HANDS = {"left": "left_rubber_hand", "right": "right_rubber_hand"}
 BASE = ["base_j_x", "base_j_y", "base_j_z", "base_j_xtheta", "base_j_ytheta", "base_j_ztheta"]
@@ -254,7 +257,14 @@ class Planner:
         q, ok = self.solve(goals, self.ik_local, seed)
         f = self.frame(q, ok, goals, anchor)
         f["reach_error_m"] = f["hand_goal_error_m"][HANDS[hand]]
-        return {"frames": [f]}
+        # closed-chain refinement as for the steps (Isaac holds the anchored hand at its measured pose)
+        rr = {"held_hand": anchor, "free_hand": hand, "a_cur": r["target"], "held_pos": r["anchor_pos"],
+              "held_quat_wxyz": r["anchor_quat_wxyz"], "pelvis_pos": r["pelvis_pos"],
+              "pelvis_quat_wxyz": r["pelvis_quat_wxyz"]}
+        out = self.refine_cc(rr, {"frames": [f], "plan_success": True})
+        last = dict(out["frames"][-1], reach_error_m=out["free_hand_error_cc_m"],
+                    reach_error_base_free_m=f["reach_error_m"])
+        return {"frames": [last], "cc_refined": out["cc_refined"]}
 
 
     def plan_step(self, q, held, held_pose, free, a_prev, a_cur, a_next, frames_n):
@@ -273,7 +283,7 @@ class Planner:
         fq = wxyz(Slerp([0, 1], Rotation.concatenate([rot(k_now["pelvis"][1]), rot(facing_quat(route))]))(0.3))
         # pelvis weight 0.3 (was 0.05): a weak pelvis term let the body creep toward the overhead anchors step by step
         c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
-             HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[1.0] * 3),
+             HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
              HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)}
         for s in (self.ik, self.ik_local):
             s.update_tool_pose_criteria(c)
@@ -385,6 +395,66 @@ class Planner:
         base = base_seed(pelvis_pos, rot(pelvis_quat))
         return np.array([base[j] if j in base else qdict.get(j, 0.0) for j in self.joints], np.float32)
 
+    def closed_chain(self, r, qdict):
+        """Where the executed plan end puts the free hand: Isaac holds the held hand at its MEASURED pose (fixed joint),
+        so the body is placed by the held-hand -> free-hand transform of the planned joints, not by the planned base.
+        Also returns the held hand's planned orientation drift (a rotation about the held hand moves the free hand by
+        about drift x arm span)."""
+        k = self.fk(self.qvec(qdict, r["pelvis_pos"], r["pelvis_quat_wxyz"]))
+        h, f = HANDS[r["held_hand"]], HANDS[r["free_hand"]]
+        rel = rot(k[h][1]).inv().apply(k[f][0] - k[h][0])
+        free = rot(r["held_quat_wxyz"]).apply(rel) + np.asarray(r["held_pos"], float)
+        return {"free_hand_error_cc_m": float(np.linalg.norm(free - np.asarray(r["a_cur"], float))),
+                "held_ori_drift_deg": float(np.degrees((rot(r["held_quat_wxyz"]).inv() * rot(k[h][1])).magnitude()))}
+
+    def refine_cc(self, r, out):
+        """Closed-chain refinement of a plan's last frame (in place): shift the free-hand IK goal by the closed-chain
+        error (fixed-point iteration, warm-started local IK) until the free hand, placed through the measured held-hand
+        pose, is within CC_TOL_M of the anchor; the refined pose is appended as the final frame only if it lowers that
+        error and stays penetration-free (checked with the planned base)."""
+        cc0 = self.closed_chain(r, out["frames"][-1]["q"])
+        out.update(cc0)
+        if cc0["free_hand_error_cc_m"] <= CC_TOL_M:
+            out["cc_refined"] = False
+            return out
+        held, free = r["held_hand"], r["free_hand"]
+        q = self.qvec(out["frames"][-1]["q"], r["pelvis_pos"], r["pelvis_quat_wxyz"])
+        k = self.fk(q)
+        # place the base where Isaac will put it: through the measured held-hand pose
+        Tm = rot(r["held_quat_wxyz"]) * rot(k[HANDS[held]][1]).inv()
+        pel = Tm.apply(k["pelvis"][0] - k[HANDS[held]][0]) + np.asarray(r["held_pos"], float)
+        base = base_seed(pel, Tm * rot(k["pelvis"][1]))
+        q = np.array([base[j] if j in base else qv for j, qv in zip(self.joints, q)], np.float32)
+        c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
+             HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
+             HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)}
+        self.ik_local.update_tool_pose_criteria(c)
+        a = np.asarray(r["a_cur"], float)
+        goal, best, kq = a.copy(), (cc0["free_hand_error_cc_m"], None), self.fk(q)
+        for _ in range(4):
+            goals = {"pelvis": (kq["pelvis"][0], kq["pelvis"][1]), HANDS[held]: (r["held_pos"], r["held_quat_wxyz"]),
+                     HANDS[free]: (goal, kq[HANDS[free]][1])}
+            qn, _ = self.solve(goals, self.ik_local, q)
+            qd = {j: float(v) for j, v in zip(self.joints, qn) if j not in BASE}
+            cc = self.closed_chain(r, qd)
+            if self.penetration(qn)["max_m"] > 0.0:
+                break
+            if cc["free_hand_error_cc_m"] < best[0]:
+                best = (cc["free_hand_error_cc_m"], qd, cc)
+            if cc["free_hand_error_cc_m"] <= CC_TOL_M:
+                break
+            kf = self.fk(qn)
+            rel = rot(kf[HANDS[held]][1]).inv().apply(kf[HANDS[free]][0] - kf[HANDS[held]][0])
+            goal = goal - (rot(r["held_quat_wxyz"]).apply(rel) + np.asarray(r["held_pos"], float) - a)
+            q = qn
+        if best[1] is not None:
+            out["frames"].append({"q": {**LEG_TUCK, **best[1]}})
+            out.update(best[2])
+        out["cc_refined"] = best[1] is not None
+        out["plan_success"] = bool(out.get("plan_success") and out["free_hand_error_cc_m"] <= 0.04)
+        out["free_hand_error_cc_before_m"] = cc0["free_hand_error_cc_m"]
+        return out
+
     def step(self, r):
         """Closed-loop step from the measured Isaac state: {"mode": "step", "q", "pelvis_pos", "pelvis_quat_wxyz",
         "held_hand", "held_pos", "held_quat_wxyz", "free_hand", "a_prev", "a_cur", "a_next", "frames"}."""
@@ -392,7 +462,7 @@ class Planner:
         st, _ = self.plan_step(q, r["held_hand"], (r["held_pos"], r["held_quat_wxyz"]), r["free_hand"],
                                np.asarray(r["a_prev"], float), np.asarray(r["a_cur"], float),
                                np.asarray(r["a_next"], float), r["frames"])
-        return dict(st, frames=st["frames"])
+        return self.refine_cc(r, dict(st, frames=list(st["frames"])))
 
     def traj_step(self, r):
         """Closed-chain step by cuRobo trajectory optimisation from a measured state (same request as step()).
@@ -430,7 +500,7 @@ class Planner:
         for s in (self.ik, self.ik_local):
             s.update_tool_pose_criteria({
                 "pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
-                HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[1.0] * 3),
+                HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
                 HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)})
         seed = None
         for qc in self.solve_candidates(goals, k=16):
@@ -463,14 +533,14 @@ class Planner:
         frames = [{"q": {**LEG_TUCK, **{j: float(v) for j, v in zip(self.joints, qv) if j not in BASE}}}
                   for qv in pos[pick]]
         frames[-1].update({"pelvis_pos": kf["pelvis"][0].tolist()})
-        return {"planner": "trajopt", "free_hand": free, "held_hand": held, "anchor": a_cur.tolist(), "frames": frames,
+        return self.refine_cc(r, {"planner": "trajopt", "free_hand": free, "held_hand": held, "anchor": a_cur.tolist(), "frames": frames,
                 "free_hand_final_error_m": free_err, "path_max_held_drift_m": drift,
                 "path_max_penetration_m": pen, "path_penetrating_links": sorted(links),
                 "max_joint_change_rad": float(np.abs(pos[-1] - q)[act].max()),
                 "suggested_duration_s": float(np.clip(TRAJ_TIME_SCALE * len(pos) * self.trajopt.config.interpolation_dt,
                                                       4.0, 16.0)),
                 "trajopt_success": bool(res.success.flatten()[0]), "goal_state_seeded": seed is not None,
-                "plan_success": free_err <= 0.04 and pen <= 0.0 and drift <= HELD_TOL_M}
+                "plan_success": free_err <= 0.04 and pen <= 0.0 and drift <= HELD_TOL_M})
 
     def chain(self, r):
         """Open-loop kinematic plan of the whole hand-over-hand traverse (diagnostic / preview; the executed run
@@ -568,7 +638,12 @@ def main():
     ap.add_argument("--out", type=Path)
     ap.add_argument("--no-scene", action="store_true", help="diagnostic: plan without the ISS collision world")
     ap.add_argument("--serve", type=int, help="serve requests on 127.0.0.1:PORT (one JSON per line) instead")
+    ap.add_argument("--frame-offset", type=float, nargs=3, metavar=("X", "Y", "Z"),
+                    help="planning-frame origin in the scene frame (default OFFSET); the base prisms reach +-10 m from it")
     args = ap.parse_args()
+    if args.frame_offset:
+        global OFFSET
+        OFFSET = np.asarray(args.frame_offset, float)
     if args.serve:
         serve(args.serve, Planner(use_scene=not args.no_scene))
         return

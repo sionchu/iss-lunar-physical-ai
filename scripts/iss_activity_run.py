@@ -8,7 +8,10 @@ canonical g1_29dof_rev_1_0 (scripts/iss_physics_common.py), legs held in the pla
 Per step: the planner replans from the MEASURED state (held hand pose, joints, pelvis); the joints track the plan;
 after a settling hold the free hand must be within CAPTURE_R of its anchor, else up to max_retries corrective
 replans; capture = a scripted world fixed joint at the hand, then the previous anchor joint is disabled.
-Optional anchored panel reach. --filter-contacts collision-filters G1 against the ISS colliders (the S1.3/S1.4
+Spec control options: gains, velocity_feedforward (joint velocity targets = d(position target)/dt instead of 0, so
+the damping term does not resist the planned motion), time_scale (multiplier on every move/retry duration), max_steps.
+Per step it records drive saturation: the fraction of sampled physics steps in which the PD command
+|kp*e + kd*de| of any DOF reaches that DOF's max effort (URDF effort limits). Optional anchored panel reach. --filter-contacts collision-filters G1 against the ISS colliders (the S1.3/S1.4
 condition); interference is then measured post hoc (plan_iss_activity.py mode "check"). Grasps are scripted
 constraints: nothing here validates contact, grasping or a controller.
 """
@@ -211,8 +214,40 @@ def main():
             return out
 
         ch = spec["chain"]
+        ff = bool(ch.get("velocity_feedforward", False))   # velocity targets = d(position target)/dt (else 0)
+        tscale = float(ch.get("time_scale", 1.0))           # multiplier on every move/retry duration
+        kp, kd = spec_gains[0]
+
+        def track(E, path, dur_s, phase, contacts, sat):
+            """Follow the smoothstep-timed piecewise-linear joint path with joint PD; count drive saturation."""
+            art = E["art"]
+            nst = max(1, round(tscale * dur_s / dt))
+            prev = path[0]
+            for k in range(nst):
+                x = smooth((k + 1) / nst) * (len(path) - 1)
+                i = min(int(x), len(path) - 2)
+                tgt = (1 - (x - i)) * path[i] + (x - i) * path[i + 1]
+                art.set_dof_position_targets(tgt[None])
+                vt = (tgt - prev) / dt if ff else np.zeros_like(tgt)
+                if ff:
+                    art.set_dof_velocity_targets(vt[None].astype(np.float32))
+                prev = tgt
+                step(E, phase, contacts)
+                if k % 4 == 0:
+                    qn, vn = art.get_dof_positions().numpy()[0], art.get_dof_velocities().numpy()[0]
+                    s = np.abs(kp * (tgt - qn) + kd * (vt - vn)) >= E["max_effort"]
+                    sat["samples"] += 1
+                    sat["any"] += int(s.any())
+                    for j in np.flatnonzero(s):
+                        sat["by_dof"][E["dofs"][j]] = sat["by_dof"].get(E["dofs"][j], 0) + 1
+            if ff:
+                art.set_dof_velocity_targets(np.zeros((1, len(prev)), dtype=np.float32))
+
         E = start_episode(ch["start_state"])
         rec["start_anchor_offset_m"] = E["anchor_offset_m"]
+        E["max_effort"] = E["art"].get_dof_max_efforts().numpy()[0].astype(float)
+        rec["dof_max_effort"] = dict(zip(E["dofs"], E["max_effort"].round(3).tolist()))
+        rec["control"] = {"gains": [kp, kd], "velocity_feedforward": ff, "time_scale": tscale}
         rec["mode"] = "chain"
         dofs = E["dofs"]
         lo, hi_lim = (x.numpy()[0] for x in E["art"].get_dof_limits())
@@ -225,7 +260,7 @@ def main():
             return json.loads(sock.readline())
 
         anchors = ch.get("anchors")
-        n_steps = len(anchors) - 1
+        n_steps = min(len(anchors) - 1, ch.get("max_steps") or len(anchors) - 1)
         for si in range(n_steps):
             s_ = state_of(E)
             held = E["anchor_hand"]
@@ -239,22 +274,19 @@ def main():
             if st.get("error"):
                 raise RuntimeError(f"planner: {st['error']}")
             st.update({"step": i, "duration_s": max(ch.get("duration_s", 2.5), st.get("suggested_duration_s", 0.0))})
+            sat = {"samples": 0, "any": 0, "by_dof": {}}
             contacts, res = {}, {"step": st["step"], "free_hand": st["free_hand"], "anchor": st["anchor"],
                                        "plan_success": st.get("plan_success"),
                                        "plan_free_hand_error_m": st.get("free_hand_final_error_m"),
+                                       "plan_free_hand_error_cc_m": st.get("free_hand_error_cc_m"),
+                                       "plan_held_ori_drift_deg": st.get("held_ori_drift_deg"),
                                        "plan_path_max_penetration_m": st.get("path_max_penetration_m"),
                                        "plan_path_penetrating_links": st.get("path_penetrating_links"),
                                        "plan_partial_fraction": st.get("partial_fraction")}
             art = E["art"]
             qs = np.array([[f["q"].get(d, 0.0) for d in dofs] for f in st["frames"]], dtype=np.float32)
             q0 = art.get_dof_positions().numpy()[0]
-            path = np.vstack([q0[None], qs])
-            nst = round(st["duration_s"] / dt)
-            for k in range(nst):
-                x = smooth((k + 1) / nst) * (len(path) - 1)
-                i = min(int(x), len(path) - 2)
-                art.set_dof_position_targets(((1 - (x - i)) * path[i] + (x - i) * path[i + 1])[None])
-                step(E, "move", contacts)
+            track(E, np.vstack([q0[None], qs]), st["duration_s"], "move", contacts, sat)
             for k in range(round(ch.get("hold_s", 1.0) / dt)):          # let the PD converge before judging
                 art.set_dof_position_targets(qs[-1][None])
                 step(E, "hold", contacts)
@@ -272,7 +304,7 @@ def main():
                                                        if st["frames"][-1].get("pelvis_pos") else None)}
             pos, quat = (x.numpy().astype(float) for x in E["bodies"].get_world_poses())
             d0 = d = float(np.linalg.norm(target - pos[hi]))
-            retries = 0
+            retries, trace = 0, []
             while d > CAPTURE_R and retries < ch.get("max_retries", 2):
                 # corrective step: replan to the same anchor from the measured state and execute it
                 retries += 1
@@ -288,20 +320,22 @@ def main():
                 q0 = art.get_dof_positions().numpy()[0]
                 path = np.vstack([q0[None], np.array([[f["q"].get(dn, 0.0) for dn in dofs] for f in fix["frames"]],
                                                      dtype=np.float32)])
-                nst = round(max(ch.get("retry_duration_s", 2.0), fix.get("suggested_duration_s", 0.0)) / dt)
-                for k in range(nst):
-                    x = smooth((k + 1) / nst) * (len(path) - 1)
-                    i = min(int(x), len(path) - 2)
-                    art.set_dof_position_targets(((1 - (x - i)) * path[i] + (x - i) * path[i + 1])[None])
-                    step(E, "retry", contacts)
+                track(E, path, max(ch.get("retry_duration_s", 2.0), fix.get("suggested_duration_s", 0.0)), "retry",
+                      contacts, sat)
                 for k in range(round(ch.get("hold_s", 1.0) / dt)):
                     art.set_dof_position_targets(path[-1][None])
                     step(E, "hold", contacts)
                 pos, quat = (x.numpy().astype(float) for x in E["bodies"].get_world_poses())
                 d = float(np.linalg.norm(target - pos[hi]))
+                trace.append({"plan_free_hand_error_m": fix.get("free_hand_final_error_m"),
+                              "plan_free_hand_error_cc_m": fix.get("free_hand_error_cc_m"),
+                              "plan_held_ori_drift_deg": fix.get("held_ori_drift_deg"),
+                              "plan_success": fix.get("plan_success"), "hand_to_anchor_m": d})
             captured = d <= CAPTURE_R
             res.update({"hand_to_anchor_after_move_m": d0, "hand_to_anchor_at_capture_m": d,
-                        "corrective_replans": retries})
+                        "corrective_replans": retries, "retry_trace": trace,
+                        "drive_saturation": {"fraction_of_samples": sat["any"] / max(1, sat["samples"]),
+                                             "by_dof": dict(sorted(sat["by_dof"].items(), key=lambda x: -x[1])[:5])}})
             if not captured and d > CAPTURE_R:
                 res["status"] = "FAIL_NO_CAPTURE"
                 res["contacts"] = contacts

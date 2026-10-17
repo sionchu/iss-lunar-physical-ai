@@ -1799,7 +1799,7 @@ def Xform "World" (
                     def Cube "Anchor_04" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1811,14 +1811,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-0.77695, -0.00035000000000049477, 4.040311466081208)
+                        double3 xformOp:translate = (-0.77695, -0.00035000000000049456, 4.0383)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_05" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1830,14 +1830,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-0.3001666666666667, -0.0005666666666671615, 4.040310912395425)
+                        double3 xformOp:translate = (-0.3001666666666667, -0.0005666666666671612, 4.0382)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_06" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1849,14 +1849,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (0.17661666666666642, -0.0007833333333338281, 4.039671295097402)
+                        double3 xformOp:translate = (0.17661666666666642, -0.0007833333333338279, 4.0381)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_07" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1868,14 +1868,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (0.6534, -0.0010000000000004946, 4.039671432244869)
+                        double3 xformOp:translate = (0.6534, -0.0010000000000004946, 4.038)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_08" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1887,14 +1887,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (1.1301833333333335, -0.0012166666666671617, 4.042248378007798)
+                        double3 xformOp:translate = (1.1301833333333335, -0.001216666666667161, 4.0379)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_09" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1906,14 +1906,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (1.6069666666666667, -0.001433333333333828, 4.039309574659905)
+                        double3 xformOp:translate = (1.6069666666666667, -0.0014333333333338277, 4.0378)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_10" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1925,7 +1925,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (2.08375, -0.0016500000000004946, 4.03930959474014)
+                        double3 xformOp:translate = (2.08375, -0.0016500000000004944, 4.0377)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -1951,7 +1951,7 @@ def Xform "World" (
                     def Cube "Anchor_12" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1963,14 +1963,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (3.0373166666666673, -0.0020833333333338277, 4.038622386999247)
+                        double3 xformOp:translate = (3.0373166666666673, -0.0020833333333338277, 4.0375000000000005)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_13" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -1982,14 +1982,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (3.5141, -0.0023000000000004965, 4.055324975950755)
+                        double3 xformOp:translate = (3.5141, -0.002300000000000497, 4.0573999999999995)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_14" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2001,14 +2001,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (3.9908833333333336, -0.002516666666667161, 4.035324996030989)
+                        double3 xformOp:translate = (3.9908833333333336, -0.002516666666667161, 4.0373)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_15" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2020,14 +2020,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (4.467666666666667, -0.0027333333333338277, 4.035325996929129)
+                        double3 xformOp:translate = (4.467666666666667, -0.0027333333333338277, 4.0372)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_16" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2039,7 +2039,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (4.944450000000001, -0.0029500000000004943, 4.035325454259529)
+                        double3 xformOp:translate = (4.944450000000001, -0.0029500000000004943, 4.037100000000001)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2134,7 +2134,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (7.290279999999999, -0.0036000000000004882, 3.9891008194333435)
+                        double3 xformOp:translate = (7.290279999999999, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2179,7 +2179,7 @@ def Xform "World" (
                     def Cube "Anchor_24" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2191,14 +2191,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (8.663499999999999, -0.0036000000000004843, 3.954470806405106)
+                        double3 xformOp:translate = (8.663499999999999, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_25" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2210,7 +2210,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (9.12124, -0.0036000000000004843, 3.954470806405106)
+                        double3 xformOp:translate = (9.12124, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2229,7 +2229,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (9.57898, -0.0036000000000004882, 3.989100819433343)
+                        double3 xformOp:translate = (9.57898, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2248,14 +2248,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.036719999999999, -0.0036000000000004882, 3.9890943398398155)
+                        double3 xformOp:translate = (10.036719999999999, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_28" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2267,14 +2267,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.49446, -0.0036000000000004097, 3.3454853496008985)
+                        double3 xformOp:translate = (10.49446, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_29" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2286,14 +2286,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, -0.0036000000000004084, 3.336111167649923)
+                        double3 xformOp:translate = (10.9522, -0.0036000000000004943, 4.0368)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_30" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2305,14 +2305,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, 0.4436399999999996, 3.4355301986121853)
+                        double3 xformOp:translate = (10.9522, 0.44363999999999953, 4.037940000000001)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_31" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2324,14 +2324,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, 0.8908799999999996, 3.9488376779846575)
+                        double3 xformOp:translate = (10.9522, 0.8908799999999996, 4.03908)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_32" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2343,7 +2343,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, 1.3381199999999995, 3.798841629540215)
+                        double3 xformOp:translate = (10.9522, 1.3381199999999995, 4.040220000000001)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2400,14 +2400,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, 2.7325999999999997, 4.44448190006001)
+                        double3 xformOp:translate = (10.9522, 2.7325999999999997, 4.442499999999992)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_36" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
                         }
                     )
                     {
@@ -2419,7 +2419,697 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9522, 3.2325999999999997, 3.263479496089676)
+                        double3 xformOp:translate = (10.9522, 3.2325999999999997, 4.0425)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+                }
+
+                def Xform "Route_jem"
+                {
+                    def Cube "Anchor_00" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 0
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -0.3000000000000005, 4.0357)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_01" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 1
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -0.7835250000000005, 4.0357)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_02" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 2
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -1.2670500000000005, 4.361972494849719)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_03" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 3
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -1.7505750000000007, 4.407239993182657)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_04" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "measured hatch Node2-JEM_PM: top edge of the smaller measured opening"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "hatch_rim"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 4
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceGraspable>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -2.2341000000000006, 4.4257)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_05" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 5
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -2.7341000000000006, 4.295699999999995)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_06" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node2>
+                        custom int iss:routeIndex = 6
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node2>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -3.2341000000000006, 4.265699999999995)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_07" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 7
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -3.7341000000000006, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_08" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 8
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -4.234100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_09" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 9
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -4.734100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_10" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 10
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -5.234100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_11" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 11
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -5.734100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_12" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 12
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -6.234100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_13" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 13
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -6.734100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_14" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 14
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -7.234100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_15" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 15
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -7.734100000000001, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_16" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 16
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -8.2341, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_17" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 17
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -8.7341, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_18" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/JEM_PM>
+                        custom int iss:routeIndex = 18
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/JEM_PM>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (10.9532, -9.2341, 4.035699999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+                }
+
+                def Xform "Route_node3"
+                {
+                    def Cube "Anchor_00" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 0
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -0.3000000000000005, 4.0479)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_01" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 1
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -0.7088800000000004, 4.0479)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_02" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 2
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -1.1177600000000005, 4.378363268685289)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_03" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 3
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -1.5266400000000007, 4.287899999999995)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_04" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 4
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -1.9355200000000006, 4.436929662037025)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_05" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "measured hatch Node1-Node3: top edge of the smaller measured opening"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "hatch_rim"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node1>
+                        custom int iss:routeIndex = 5
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node1>
+                        rel material:binding = </World/Looks/AffordanceGraspable>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -2.3444000000000003, 4.4679)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_06" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 6
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -2.817127272727273, 4.4140697498629615)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_07" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 7
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -3.2898545454545456, 4.0479)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_08" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 8
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -3.7625818181818182, 4.047899999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_09" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 9
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -4.235309090909092, 4.857899999999982)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_10" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 10
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -4.7080363636363645, 4.327899999999993)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_11" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 11
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -5.180763636363637, 4.857899999999982)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_12" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 12
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -5.653490909090909, 4.048007445666911)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_13" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 13
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -6.1262181818181825, 4.047899999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_14" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 14
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -6.598945454545455, 4.047899999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_15" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 15
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -7.071672727272728, 4.047899999999999)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+                    }
+
+                    def Cube "Anchor_16" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                        customData = {
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                        }
+                    )
+                    {
+                        custom token iss:affordance = "graspable_placeholder"
+                        custom rel iss:collisionProxy = </World/Environment/ISS/Collision/Node3>
+                        custom int iss:routeIndex = 16
+                        custom rel iss:visualSource = </World/Environment/ISS/Visual/Node3>
+                        rel material:binding = </World/Looks/AffordanceWaypoint>
+                        double size = 1
+                        float3 xformOp:rotateXYZ = (0, 0, 0)
+                        float3 xformOp:scale = (0.04, 0.04, 0.04)
+                        double3 xformOp:translate = (-4.4619, -7.5444, 4.047899999999999)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
                 }

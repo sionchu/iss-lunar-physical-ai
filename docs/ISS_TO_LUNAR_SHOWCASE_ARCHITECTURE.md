@@ -607,6 +607,61 @@ tj3 details: capture error 0.5–3.8 cm (radius 4 cm); 0–4 corrective replans 
 - Why the head and ankle contacts occur, when the planned paths show no sphere penetration. Likely PD tracking error (pelvis 0.2 m off plan in step 24), or G1's collision meshes differing from cuRobo's sphere model.
 - A whole-body controller (option B) is NOT_RUN.
 
+### Tracking ablations, closed-chain refinement and three scenario routes, contacts ON (2026-10-17)
+
+**Verdict: PARTIAL.**
+- Two of three scenario routes completed: `jem` (Node2 → JEM PM) 18/18 and `node3` (Node1 → Node3) 16/16.
+- `main` (Node1 → US Lab → Node2 → Columbus) reached 20/36 and failed at the US Lab → Node2 hatch, worse than tj3's 23.
+- Its maintenance-panel reach also missed (5.7 cm, against tj3's 1.65 cm).
+- The Cupola is NOT_RUN. Its Node3 hatch alignment is FAIL, and the nadir descent puts the planner's floating-base X→Y→Z rotation chain at its singularity.
+
+**Option 2 (PD tracking error).** The first 12 `main` steps were run once per condition, with gains 300/30 throughout. In the table:
+- "after move" is the hand–anchor distance after the first move, averaged over executed steps.
+- "joint error" is the maximum joint error after the hold.
+
+| Run | Velocity feedforward | Time scale | Retry planner | Closed-chain refinement | Captured / 12 | After move (mean) | Joint error (mean) |
+| --- | --- | ---: | --- | --- | ---: | ---: | ---: |
+| `tj3` (first 12) | no | 1 | IK step | no | 12 | 0.229 m | 0.32 rad |
+| `ab_ff1` | yes | 1 | IK step | no | 7 | 0.086 m | 0.12 rad |
+| `ab_ff2` | yes | 2 | IK step | no | 4 | 0.067 m | 0.10 rad |
+| `ab_ff3` | yes | 2 | trajopt | no | 2 | 0.083 m | 0.13 rad |
+| `ab_cc2` | yes | 2 | IK step | yes | 6 | 0.082 m | 0.17 rad |
+| `ab_cc3` | yes | 2 | IK step | yes, held-hand orientation weight 5 | 2 | 0.083 m | 0.13 rad |
+| `ab_cc4` (chosen) | no | 1 | IK step | yes | **12** | 0.145 m | 0.21 rad |
+
+- **Feedforward and slower execution** (joint velocity targets = d(target)/dt instead of 0, so the damping term stops resisting the planned motion) cut tracking error to about a third, but completed fewer steps.
+- **Saturation.** The held arm's wrist (pitch/yaw effort limit 5 N·m in the URDF) saturates in 30–95 % of sampled physics steps, at both speeds.
+- **Where the failures came from.** Plan-to-execution mismatch, not PD:
+  - Isaac holds the held hand at its measured pose, so the body is placed by the held-hand → free-hand transform of the planned joints.
+  - A few degrees of planned held-hand rotation move the free hand by about drift × arm span.
+  - `ab_cc1` diagnostic, failed step 5: the base-free plan said 2.5 cm; the closed-chain prediction said 6.8–7.3 cm; execution gave 5.6–7.6 cm.
+- **Closed-chain refinement** (`plan_iss_activity.py` `refine_cc`, all modes including the panel reach):
+  - Re-places the plan's final pose through the measured held-hand pose.
+  - Shifts the free-hand IK goal by the predicted error until it is within 1.5 cm, discarding any refinement that penetrates.
+  - After it, corrective replans land within 1–2 cm of their prediction.
+- **Remaining failures** are reach limits at the measured posture: the refined prediction itself stays 6–20 cm out.
+- **Not settled:** the closed loop branches on small state differences, so one run per condition cannot rank the conditions (UNKNOWN). Feedforward + refinement at time scale 1 was not run.
+
+**Scenario routes** (`build_iss_full.py` `ROUTES`, `iss_activity_drive.py --route`):
+- Each route starts from its own placement. Each planner service runs in its own planning frame (`--frame-offset`), because the base prisms reach ±10 m.
+- Placeholder anchors are capped at 0.80 m above the centre line, the height of the US Lab ceiling anchors. Above the cap, or with no overhead surface (open ports), they are labelled `PLACEHOLDER (free-standing)`.
+- This cut the `main` maximum anchor gap from 1.28 m to 0.64 m. Checker: 36/37; the remaining FAIL is the Node3–Cupola hatch.
+
+| Route | Steps captured | Zero-contact captured steps | Capture error | Frames penetrating (any / > 1 cm / > 3 cm) | Max penetration | Simulated |
+| --- | --- | ---: | --- | --- | ---: | ---: |
+| `full_main` | 20 / 36 | 5 | 0.3–3.8 cm | 13 % / 6.3 % / 0 % | 0.026 m | 279 s |
+| `full_jem` | **18 / 18** | 5 | 0.6–4.0 cm | 10 % / 6.5 % / 0.1 % | 0.034 m | 226 s |
+| `full_node3` | **16 / 16** | 3 | 0.6–4.0 cm | 6.9 % / 2.9 % / 0.8 % | 0.043 m | 236 s |
+
+- Contact events concentrate on the trailing legs (ankle, knee, hip) and the head: in Node3 the head logged 11,012 events, and one step logged 27,698.
+- Hand–handhold contact is still a scripted fixed joint, and the handholds outside the S1 rail and the hatch rims are placeholders.
+
+**Video.** `render_iss_activity.py`:
+- The chase camera sits on the route centre line, 2.3 m of arc length behind the smoothed pelvis, and never backs up.
+- An 18 mm lens, a render-only fill light on the camera, and a partial grey-world white balance. The 4800 K lights read brown.
+- The overlay shows the route, per-step contact events, and contacts ON/filtered, read from the run record (it previously always said "filtered").
+- In the 16-still previews of `jem` and `node3`, no frame showed only a wall or black.
+
 ## Claim ladder
 
 ### Allowed now

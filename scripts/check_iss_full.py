@@ -136,19 +136,20 @@ check("affordances resolve to real collision + visual prims", aff and not broken
 check("2 graspable rails + maintenance target + hatch affordances",
       kinds.count("graspable") == 2 and "maintenance_target" in kinds and kinds.count("hatch") >= 1, str(kinds))
 
-# hand-over-hand route anchors (affordance layer only): labelled, spaced within reach
-route = [p for p in Usd.PrimRange(stage.GetPrimAtPath(f"{ISS}/Affordances/Route")) if p.HasAttribute("iss:routeIndex")] \
-    if stage.GetPrimAtPath(f"{ISS}/Affordances/Route").IsValid() else []
-route.sort(key=lambda p: p.GetAttribute("iss:routeIndex").Get())
-bad_lab = [str(p.GetPath()) for p in route if p.GetAttribute("iss:affordance").Get() == "graspable_placeholder"
-           and not str(p.GetCustomDataByKey("provenance") or "").startswith("PLACEHOLDER")]
-pts = [np.asarray(UsdGeom.Xformable(p).ComputeLocalToWorldTransform(0).ExtractTranslation()) for p in route]
-gap = max((float(np.linalg.norm(a - b)) for a, b in zip(pts, pts[1:])), default=None)
-kinds_r = sorted({p.GetAttribute("iss:affordance").Get() for p in route})
-check("route anchors: placeholders labelled PLACEHOLDER, max gap <= 1.0 m, rails/rims cite their source",
-      route and not bad_lab and gap is not None and gap <= 1.0
-      and all(p.GetCustomDataByKey("provenance") for p in route),
-      f"anchors={len(route)} kinds={kinds_r} max_gap={gap and round(gap, 3)} unlabelled={bad_lab[:3]}")
+# hand-over-hand route anchors (affordance layer only), every scenario route: labelled, spaced within reach
+for rp in sorted(str(p.GetPath()) for p in stage.GetPrimAtPath(f"{ISS}/Affordances").GetChildren()
+                 if p.GetName().startswith("Route")) or [f"{ISS}/Affordances/Route"]:
+    route = [p for p in Usd.PrimRange(stage.GetPrimAtPath(rp)) if p.HasAttribute("iss:routeIndex")]         if stage.GetPrimAtPath(rp).IsValid() else []
+    route.sort(key=lambda p: p.GetAttribute("iss:routeIndex").Get())
+    bad_lab = [str(p.GetPath()) for p in route if p.GetAttribute("iss:affordance").Get() == "graspable_placeholder"
+               and not str(p.GetCustomDataByKey("provenance") or "").startswith("PLACEHOLDER")]
+    pts = [np.asarray(UsdGeom.Xformable(p).ComputeLocalToWorldTransform(0).ExtractTranslation()) for p in route]
+    gap = max((float(np.linalg.norm(a - b)) for a, b in zip(pts, pts[1:])), default=None)
+    kinds_r = sorted({p.GetAttribute("iss:affordance").Get() for p in route})
+    check(f"{rp.split('/')[-1]} anchors: placeholders labelled PLACEHOLDER, max gap <= 1.0 m, rails/rims cite their source",
+          route and not bad_lab and gap is not None and gap <= 1.0
+          and all(p.GetCustomDataByKey("provenance") for p in route),
+          f"anchors={len(route)} kinds={kinds_r} max_gap={gap and round(gap, 3)} unlabelled={bad_lab[:3]}")
 
 # hatch alignment, re-measured on the composed stage
 # Source-mesh alignment (module meshes only). A gap that fails it is re-checked against the authored passage proxy:

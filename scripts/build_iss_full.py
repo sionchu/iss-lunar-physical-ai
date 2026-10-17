@@ -492,8 +492,16 @@ def build_passages(stage, M, hatches):
 ROUTE_SPACING_M, ROUTE_STANDOFF_M = 0.50, 0.22   # 0.08/0.15 m: G1 hand spheres, then the wrist, hit the racks
 ROUTE_MIN_CLEARANCE_M = 0.20   # placeholders are lowered until their 3-D clearance to any surface reaches this
 RAIL_HAND_OFFSET_M = 0.10      # Handrail_B hand target, aisle side of the grip axis (0.06 m left < 0.05 m clearance)
+ROUTE_MAX_RISE_M = 0.80   # placeholders at most this far above the route centre line: the US Lab ceiling anchors (+0.80 m)
+                          # are where the traverse captured; higher Node2/Columbus ceilings left 0.8-1.3 m anchor gaps
 PLACEHOLDER_PROVENANCE = ("PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the "
                           "overhead mesh surface found by ray-casting the source meshes along the route centre line")
+PLACEHOLDER_FREE_PROVENANCE = ("PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more "
+                               "than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that "
+                               "height with no structure behind it")
+# hand-over-hand scenarios: name -> route polyline (start, hatch centres, end); all 7 modules except the Cupola, whose
+# Node3 hatch passage is UNKNOWN and whose nadir descent is the planner base chain's gimbal-lock orientation
+ROUTES = ("main", "jem", "node3")
 
 
 def ray_hits(tris, origins, d):
@@ -515,19 +523,25 @@ def ray_hits(tris, origins, d):
     return np.asarray(out)
 
 
-def build_route_anchors(stage, M, hatches):
+def build_route_anchors(stage, M, hatches, name="main"):
     """Hand-over-hand route anchors on the overhead side of the route centre line (affordance layer only).
 
-    Route: Node1 -> US Lab -> Node2 -> Columbus through the measured hatch centres. Anchors every ROUTE_SPACING_M:
+    Routes: main = Node1 -> US Lab -> Node2 -> Columbus, jem = Node2 -> JEM PM, node3 = Node1 -> Node3, through the
+    measured hatch centres. Anchors every ROUTE_SPACING_M:
     'hatch_rim' between the two measured hatch end planes (+-0.10 m): the measured opening's top edge minus the standoff
     (passage walls are authored cubes, not ray-cast); Handrail_B (the S1 rail)
     replaces the nearest one, all others are 'graspable_placeholder' (no public handrail layout exists).
     """
     hc = {r["pair"]: np.asarray(r["centre_m"]) for r in hatches if r.get("centre_m")}
     hrow = {r["pair"]: r for r in hatches if r.get("centre_m")}
-    pts = [hc["Node1-USLab"] + np.array([-0.70, 0, 0]), hc["Node1-USLab"], hc["USLab-Node2"],
-           np.array([hc["Node2-Columbus"][0], hc["USLab-Node2"][1], hc["USLab-Node2"][2]]),
-           hc["Node2-Columbus"], hc["Node2-Columbus"] + np.array([0, -1.0, 0])]
+    if name == "main":
+        pts = [hc["Node1-USLab"] + np.array([-0.70, 0, 0]), hc["Node1-USLab"], hc["USLab-Node2"],
+               np.array([hc["Node2-Columbus"][0], hc["USLab-Node2"][1], hc["USLab-Node2"][2]]),
+               hc["Node2-Columbus"], hc["Node2-Columbus"] + np.array([0, -1.0, 0])]
+    else:      # from the parent node's centre line through the hatch, along +y to ~1.2 m before the far end
+        h = hc["Node2-JEM_PM" if name == "jem" else "Node1-Node3"]
+        pts = [np.array([h[0], 0.3, h[2]]), h, h + np.array([0, 7.0 if name == "jem" else 5.2, 0])]   # JEM: y > 9.5
+        # m has end-cone hardware 0.08 m above the centre line and open ports
     samples = []
     for a, b in zip(pts[:-1], pts[1:]):
         n = max(1, int(np.ceil(np.linalg.norm(b - a) / ROUTE_SPACING_M)))
@@ -541,8 +555,8 @@ def build_route_anchors(stage, M, hatches):
     rail_b = stage.GetPrimAtPath(f"{ISS}/Affordances/USLab_S1Frame/Handrail_B_Graspable")
     rb = np.asarray(UsdGeom.Xformable(rail_b).ComputeLocalToWorldTransform(0).ExtractTranslation())
     rb_hand = rb - up * RAIL_HAND_OFFSET_M
-    i_rb = int(np.argmin([np.linalg.norm(s[:2] - rb[:2]) for s in samples]))
-    root = UsdGeom.Xform.Define(stage, f"{ISS}/Affordances/Route").GetPrim()
+    i_rb = int(np.argmin([np.linalg.norm(s[:2] - rb[:2]) for s in samples])) if name == "main" else -1
+    root = UsdGeom.Xform.Define(stage, f"{ISS}/Affordances/Route" + ("" if name == "main" else f"_{name}")).GetPrim()
     import trimesh
     cube = np.array([[x, y, z] for x in (-0.5, 0.5) for y in (-0.5, 0.5) for z in (-0.5, 0.5)])
     ctri = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6],
@@ -577,8 +591,10 @@ def build_route_anchors(stage, M, hatches):
             top = min(r["a"]["size_m"][1], r["b"]["size_m"][1]) / 2
             p = np.array([s[0], s[1], hc[near[0]][2] + top - ROUTE_STANDOFF_M])
             kind, prov = "hatch_rim", f"measured hatch {near[0]}: top edge of the smaller measured opening"
-        elif np.isfinite(dz):
-            p = s + up * (dz - ROUTE_STANDOFF_M)
+        elif np.isfinite(dz) or name != "main":     # main keeps its skip (Node1 open port, S1.4 receipts)
+            p = s + up * min(dz - ROUTE_STANDOFF_M, ROUTE_MAX_RISE_M)   # no surface (open port): free-standing
+            if dz - ROUTE_STANDOFF_M > ROUTE_MAX_RISE_M + 0.05:     # >5 cm above the cap: no surface behind it
+                prov = PLACEHOLDER_FREE_PROVENANCE
             while clearance(p) < ROUTE_MIN_CLEARANCE_M and p[2] > s[2]:   # lower toward the module axis
                 p = p - up * 0.01
         else:
@@ -596,9 +612,15 @@ def build_route_anchors(stage, M, hatches):
         g.SetCustomDataByKey("provenance", prov)
         out.append({"index": len(out), "kind": kind, "pos_scene_m": np.round(p, 4).tolist(),
                     "clearance_m": round(clearance(p), 4),
-                    "surface_dist_m": round(float(dz), 4), "module": module})
+                    "surface_dist_m": round(float(dz), 4) if np.isfinite(dz) else None, "module": module,
+                    "free_standing": prov == PLACEHOLDER_FREE_PROVENANCE})
     gaps = [float(np.linalg.norm(np.asarray(a["pos_scene_m"]) - np.asarray(b["pos_scene_m"]))) for a, b in zip(out, out[1:])]
-    return {"anchors": out, "skipped_samples": skipped, "max_gap_m": round(max(gaps), 4) if gaps else None}
+    u = (pts[1] - pts[0]) / np.linalg.norm(pts[1] - pts[0])
+    ctr = np.mean([a["pos_scene_m"] for a in out], axis=0)
+    return {"anchors": out, "skipped_samples": skipped, "max_gap_m": round(max(gaps), 4) if gaps else None,
+            "start_pelvis_m": np.round([out[0]["pos_scene_m"][0] - 0.45 * u[0], out[0]["pos_scene_m"][1] - 0.45 * u[1],
+                                        pts[0][2]], 4).tolist(), "facing": u.round(4).tolist(),
+            "frame_offset_m": [3.0, 0.0, -4.84] if name == "main" else np.round([ctr[0], ctr[1], -4.84], 2).tolist()}
 
 
 LAYERS = {
@@ -670,7 +692,7 @@ def main():
     strategy = build_collision(stage, poses, vis["USLab"])
     build_affordances(stage, M, vis["USLab"], hatches)
     passages = build_passages(stage, M, hatches)
-    route = build_route_anchors(stage, M, hatches)
+    routes = {n: build_route_anchors(stage, M, hatches, n) for n in ROUTES}
     bbc = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
     boxes = {}
     for name in MODULES:
@@ -687,7 +709,7 @@ def main():
               "hatches_uslab_collision_origin": hatches_col, "collision_strategy": strategy, "cameras": cams,
               "module_bbox_scene_m": {k: [v[0].round(3).tolist(), v[1].round(3).tolist()] for k, v in boxes.items()},
               "known_gaps": KNOWN_GAPS, "authored_passages": passages, "passage_provenance": PASSAGE_PROVENANCE,
-              "route_anchors": route, "placeholder_provenance": PLACEHOLDER_PROVENANCE}
+              "route_anchors": routes["main"], "routes": routes, "placeholder_provenance": PLACEHOLDER_PROVENANCE}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "build_report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     for r in hatches:

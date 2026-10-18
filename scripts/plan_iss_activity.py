@@ -56,6 +56,7 @@ def base_seed(pelvis_pos, pelvis_rot):
     return dict(zip(BASE, list(to_plan_pt(pelvis_pos)) + list((RP * pelvis_rot).as_euler("XYZ"))))
 
 
+LARGE_SWING_RAD = 6.0  # trajopt re-configuration seed limit when no small-swing step exists (main step 21: 5.6 rad)
 MAX_SWING_RAD = 1.5    # largest actuated-joint change per step; executed slowly (SECONDS_PER_RAD), see step()
 SECONDS_PER_RAD = 3.0
 HELD_TOL_M = 0.02     # planner acceptance for the anchored hand (the fixed joint holds it in execution); the
@@ -462,7 +463,13 @@ class Planner:
         st, _ = self.plan_step(q, r["held_hand"], (r["held_pos"], r["held_quat_wxyz"]), r["free_hand"],
                                np.asarray(r["a_prev"], float), np.asarray(r["a_cur"], float),
                                np.asarray(r["a_next"], float), r["frames"])
-        return self.refine_cc(r, dict(st, frames=list(st["frames"])))
+        out = self.refine_cc(r, dict(st, frames=list(st["frames"])))
+        if not out["plan_success"]:
+            # no small-swing IK step: trajectory optimisation, seeded with a large re-configuration if needed
+            tr = self.traj_step(dict(r, allow_large_swing=True))
+            if tr["plan_success"] or tr["free_hand_error_cc_m"] < out["free_hand_error_cc_m"] - 0.02:
+                return dict(tr, fallback="trajopt")
+        return out
 
     def traj_step(self, r):
         """Closed-chain step by cuRobo trajectory optimisation from a measured state (same request as step()).
@@ -502,13 +509,18 @@ class Planner:
                 "pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
                 HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
                 HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)})
-        seed = None
-        for qc in self.solve_candidates(goals, k=16):
+        seed, large = None, None
+        for qc in self.solve_candidates(goals, k=32 if r.get("allow_large_swing") else 16):
             fc = self.frame(qc, self.constraints(torch.as_tensor(qc, device="cuda").view(1, 1, -1)), goals, held)
             dq = float(np.abs(qc - q)[act_i].max())
-            if fc["success"] and fc["hand_goal_error_m"][HANDS[free]] <= 0.04 and dq <= MAX_SWING_RAD:
-                if seed is None or dq < seed[0]:
+            if fc["success"] and fc["hand_goal_error_m"][HANDS[free]] <= 0.04:
+                if dq <= MAX_SWING_RAD and (seed is None or dq < seed[0]):
                     seed = (dq, qc)
+                elif dq <= LARGE_SWING_RAD and (large is None or dq < large[0]):
+                    large = (dq, qc)
+        large_used = seed is None and large is not None and bool(r.get("allow_large_swing"))
+        if large_used:          # re-configuration: trajopt keeps the held hand and clearance along the whole path
+            seed = large
         gs = None if seed is None else JointState.from_position(torch.as_tensor(seed[1], device="cuda")[None],
                                                                  joint_names=self.joints)
         self.trajopt.reset_seed()
@@ -537,9 +549,11 @@ class Planner:
                 "free_hand_final_error_m": free_err, "path_max_held_drift_m": drift,
                 "path_max_penetration_m": pen, "path_penetrating_links": sorted(links),
                 "max_joint_change_rad": float(np.abs(pos[-1] - q)[act].max()),
-                "suggested_duration_s": float(np.clip(TRAJ_TIME_SCALE * len(pos) * self.trajopt.config.interpolation_dt,
-                                                      4.0, 16.0)),
+                "suggested_duration_s": float(np.clip(max(TRAJ_TIME_SCALE * len(pos) * self.trajopt.config.interpolation_dt,
+                                                          SECONDS_PER_RAD * float(np.abs(pos[-1] - q)[act].max())),
+                                                      4.0, 20.0 if large_used else 16.0)),
                 "trajopt_success": bool(res.success.flatten()[0]), "goal_state_seeded": seed is not None,
+                "large_swing_seed": large_used,
                 "plan_success": free_err <= 0.04 and pen <= 0.0 and drift <= HELD_TOL_M})
 
     def chain(self, r):

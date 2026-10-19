@@ -499,6 +499,9 @@ PLACEHOLDER_PROVENANCE = ("PLACEHOLDER: no public ISS handrail layout; virtual h
 PLACEHOLDER_FREE_PROVENANCE = ("PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more "
                                "than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that "
                                "height with no structure behind it")
+PANEL_STATION_BACK_M = 0.35
+PANEL_STATION_PROVENANCE = ("PLACEHOLDER (panel station): task-defined virtual handhold PANEL_STATION_BACK aft of the "
+                            "maintenance-panel target at the placeholder height; no public ISS handrail layout")
 # hand-over-hand scenarios: name -> route polyline (start, hatch centres, end); all 7 modules except the Cupola, whose
 # Node3 hatch passage is UNKNOWN and whose nadir descent is the planner base chain's gimbal-lock orientation
 ROUTES = ("main", "jem", "node3")
@@ -556,6 +559,14 @@ def build_route_anchors(stage, M, hatches, name="main"):
     rb = np.asarray(UsdGeom.Xformable(rail_b).ComputeLocalToWorldTransform(0).ExtractTranslation())
     rb_hand = rb - up * RAIL_HAND_OFFSET_M
     i_rb = int(np.argmin([np.linalg.norm(s[:2] - rb[:2]) for s in samples])) if name == "main" else -1
+    # panel station (main only): the sample nearest PANEL_STATION_BACK_M aft of the maintenance-panel target becomes
+    # a virtual handhold from which the panel is within reach (from Handrail_B it is 0.93-0.96 m, G1's span limit)
+    i_ps, ps = -1, None
+    if name == "main":
+        tgt = np.asarray(UsdGeom.Xformable(stage.GetPrimAtPath(f"{ISS}/Affordances/USLab_S1Frame/MaintenancePanel_Target"))
+                         .ComputeLocalToWorldTransform(0).ExtractTranslation())
+        ps = np.array([tgt[0] - PANEL_STATION_BACK_M, 0.0, 0.0])
+        i_ps = int(np.argmin([abs(s[0] - ps[0]) if k != i_rb else 1e9 for k, s in enumerate(samples)]))
     root = UsdGeom.Xform.Define(stage, f"{ISS}/Affordances/Route" + ("" if name == "main" else f"_{name}")).GetPrim()
     import trimesh
     cube = np.array([[x, y, z] for x in (-0.5, 0.5) for y in (-0.5, 0.5) for z in (-0.5, 0.5)])
@@ -586,6 +597,11 @@ def build_route_anchors(stage, M, hatches, name="main"):
         if i == i_rb:
             p, kind, prov = rb_hand, "graspable_rail", "S1 Handrail_B (NASA handrail mesh, S1 placement)"
             vis = f"{ISS}/Visual/USLab_S1Frame/Handrail_B"
+        elif i == i_ps:
+            p = np.array([ps[0], s[1], s[2] + ROUTE_MAX_RISE_M])
+            while clearance(p) < ROUTE_MIN_CLEARANCE_M and p[2] > s[2]:
+                p = p - up * 0.01
+            prov = PANEL_STATION_PROVENANCE
         elif near:
             r = hrow[near[0]]
             top = min(r["a"]["size_m"][1], r["b"]["size_m"][1]) / 2
@@ -613,7 +629,7 @@ def build_route_anchors(stage, M, hatches, name="main"):
         out.append({"index": len(out), "kind": kind, "pos_scene_m": np.round(p, 4).tolist(),
                     "clearance_m": round(clearance(p), 4),
                     "surface_dist_m": round(float(dz), 4) if np.isfinite(dz) else None, "module": module,
-                    "free_standing": prov == PLACEHOLDER_FREE_PROVENANCE})
+                    "free_standing": prov == PLACEHOLDER_FREE_PROVENANCE, "panel_station": i == i_ps})
     gaps = [float(np.linalg.norm(np.asarray(a["pos_scene_m"]) - np.asarray(b["pos_scene_m"]))) for a, b in zip(out, out[1:])]
     u = (pts[1] - pts[0]) / np.linalg.norm(pts[1] - pts[0])
     ctr = np.mean([a["pos_scene_m"] for a in out], axis=0)

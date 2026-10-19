@@ -104,6 +104,9 @@ def main():
         scene = UsdPhysics.Scene(stage.GetPrimAtPath("/World/PhysicsScene"))
         if scene.GetGravityMagnitudeAttr().Get() != 0.0:
             raise RuntimeError("scene gravity is not zero")
+        grav = float(spec["chain"].get("gravity_m_s2", 0.0))   # comparison runs only (ground: 9.81, -z)
+        scene.GetGravityMagnitudeAttr().Set(grav)
+        rec["gravity_m_s2"] = grav
         stage.SetTimeCodesPerSecond(1.0 / phys["dt_s"])
         px = PhysxScene(scene.GetPrim())
         px.set_steps_per_second(round(1.0 / phys["dt_s"]))

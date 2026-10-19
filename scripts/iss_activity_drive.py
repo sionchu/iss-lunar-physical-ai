@@ -58,6 +58,7 @@ def main():
     ap.add_argument("--retry-mode", default="step", choices=["step", "traj_step"],
                     help="planner mode for corrective replans")
     ap.add_argument("--hand-servo", action="store_true", help="closed-loop free-hand correction after each move")
+    ap.add_argument("--gravity", type=float, default=0.0, help="scene gravity magnitude (m/s^2, -z); 9.81 = ground")
     ap.add_argument("--max-steps", type=int, help="stop after this many steps (ablations)")
     ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
                     help="traj_step: cuRobo trajectory optimisation with the held hand constrained along the path "
@@ -72,7 +73,8 @@ def main():
     anchors = [a["pos_scene_m"] for a in route["anchors"]]
     world = json.loads((ROOT / "outputs/iss_full_v0/world/anchors.json").read_text(encoding="utf-8"))
     panel = world["targets"][0]["centre_m"]
-    rail_b = next((a["index"] for a in route["anchors"] if a["kind"] == "graspable_rail"), None)
+    rail_b = next((a["index"] for a in route["anchors"] if a.get("panel_station")),
+                  next((a["index"] for a in route["anchors"] if a["kind"] == "graspable_rail"), None))   # reach anchor
 
     log = open(OUT / "planner_service.log", "w", encoding="utf-8")
     srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port), "--frame-offset",
@@ -98,7 +100,7 @@ def main():
                                     if rail_b is not None else None),
                           "route": args.route, "max_steps": args.max_steps,
                           **CONTROL, "gains": args.gains, "hold_s": args.hold_s,
-                          "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "time_scale": args.time_scale}}
+                          "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "gravity_m_s2": args.gravity, "time_scale": args.time_scale}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
         cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
                f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))

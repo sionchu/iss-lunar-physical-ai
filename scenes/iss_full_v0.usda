@@ -1951,7 +1951,7 @@ def Xform "World" (
                     def Cube "Anchor_12" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                            string provenance = "PLACEHOLDER (panel station): task-defined virtual handhold PANEL_STATION_BACK aft of the maintenance-panel target at the placeholder height; no public ISS handrail layout"
                         }
                     )
                     {
@@ -1963,7 +1963,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (3.0373166666666673, -0.0020833333333338277, 4.0375000000000005)
+                        double3 xformOp:translate = (3.0085471999999984, -0.0020833333333338277, 4.0375000000000005)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 

@@ -192,7 +192,8 @@ for i in range(0, len(FR["t"]), args.every):
     nxt = next((e for e in ends if e[0] > t), None)
     status = f"step {nxt[1]} of {REC.get('total_steps')}" if nxt else (f"step {done[-1][1]}: {done[-1][2]}" if done else "")
     cur = nxt[1] if nxt else (done[-1][1] if done else None)
-    lines = [(f"G1 · PhysX (gate v3 physics) · hand-over-hand {ROUTE_TEXT.get(route, route)} · closed-loop cuRobo",
+    g_txt = f"gravity {REC.get('gravity_m_s2', 0.0):g} m/s²" if REC.get("gravity_m_s2") else "microgravity (0 g)"
+    lines = [(f"G1 · PhysX · {g_txt} · hand-over-hand {ROUTE_TEXT.get(route, route)} · closed-loop cuRobo",
               font),
              (f"t = {t:5.1f} s   {status}   captures so far: {sum(e[2] == 'CAPTURED' for e in done)}"
               + ("" if REC.get("contacts_filtered") or cur not in cev else f"   contact events this step: {cev[cur]}"),

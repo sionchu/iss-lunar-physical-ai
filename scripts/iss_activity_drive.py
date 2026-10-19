@@ -57,6 +57,7 @@ def main():
     ap.add_argument("--hold-s", type=float, default=CONTROL["hold_s"])
     ap.add_argument("--retry-mode", default="step", choices=["step", "traj_step"],
                     help="planner mode for corrective replans")
+    ap.add_argument("--hand-servo", action="store_true", help="closed-loop free-hand correction after each move")
     ap.add_argument("--max-steps", type=int, help="stop after this many steps (ablations)")
     ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
                     help="traj_step: cuRobo trajectory optimisation with the held hand constrained along the path "
@@ -97,7 +98,7 @@ def main():
                                     if rail_b is not None else None),
                           "route": args.route, "max_steps": args.max_steps,
                           **CONTROL, "gains": args.gains, "hold_s": args.hold_s,
-                          "velocity_feedforward": args.velocity_ff, "time_scale": args.time_scale}}
+                          "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "time_scale": args.time_scale}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
         cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
                f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))

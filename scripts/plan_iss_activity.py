@@ -262,10 +262,26 @@ class Planner:
         rr = {"held_hand": anchor, "free_hand": hand, "a_cur": r["target"], "held_pos": r["anchor_pos"],
               "held_quat_wxyz": r["anchor_quat_wxyz"], "pelvis_pos": r["pelvis_pos"],
               "pelvis_quat_wxyz": r["pelvis_quat_wxyz"]}
-        out = self.refine_cc(rr, {"frames": [f], "plan_success": True})
-        last = dict(out["frames"][-1], reach_error_m=out["free_hand_error_cc_m"],
+        out = (self.refine_cc(rr, {"frames": [f], "plan_success": True}) if not r.get("no_refine")
+               else dict(self.closed_chain(rr, f["q"]), frames=[f], cc_refined=False))
+        best, src = out, "local"
+        if out["free_hand_error_cc_m"] > CC_TOL_M and not r.get("local_only"):
+            # the local solve from the measured posture can stall 5-10 cm short (panel benchmark): try global
+            # candidates (feasible, swing <= MAX_SWING_RAD), each with the closed-chain refinement
+            act_i = [i for i, j in enumerate(self.joints) if j not in BASE]
+            for qc in self.solve_candidates(goals, k=16):
+                fc = self.frame(qc, self.constraints(torch.as_tensor(qc, device="cuda").view(1, 1, -1)), goals, anchor)
+                if not fc["success"] or float(np.abs(qc - seed)[act_i].max()) > float(r.get("max_swing_rad", MAX_SWING_RAD)):
+                    continue
+                oc = self.refine_cc(rr, {"frames": [fc], "plan_success": True})
+                if oc["free_hand_error_cc_m"] < best["free_hand_error_cc_m"]:
+                    best, src = oc, "global"
+        last = dict(best["frames"][-1], reach_error_m=best["free_hand_error_cc_m"],
                     reach_error_base_free_m=f["reach_error_m"])
-        return {"frames": [last], "cc_refined": out["cc_refined"]}
+        act_i = [i for i, j in enumerate(self.joints) if j not in BASE]
+        dq = float(np.abs(self.qvec(last["q"], r["pelvis_pos"], r["pelvis_quat_wxyz"]) - seed)[act_i].max())
+        return {"frames": [last], "cc_refined": best["cc_refined"], "reach_source": src, "max_joint_change_rad": dq,
+                "suggested_duration_s": float(np.clip(SECONDS_PER_RAD * dq, 2.0, 16.0))}
 
 
     def plan_step(self, q, held, held_pose, free, a_prev, a_cur, a_next, frames_n):

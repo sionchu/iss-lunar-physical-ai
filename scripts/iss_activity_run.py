@@ -10,7 +10,8 @@ after a settling hold the free hand must be within CAPTURE_R of its anchor, else
 replans; capture = a scripted world fixed joint at the hand, then the previous anchor joint is disabled.
 Spec control options: gains, velocity_feedforward (joint velocity targets = d(position target)/dt instead of 0, so
 the damping term does not resist the planned motion), time_scale (multiplier on every move/retry duration), max_steps.
-Per step it records drive saturation: the fraction of sampled physics steps in which the PD command
+Spec hand_servo: after each move/retry (and the panel reach), a resolved-rate correction of the free hand on the
+measured state (floating-base Jacobian, held hand held still in 6-D). Per step it records drive saturation: the fraction of sampled physics steps in which the PD command
 |kp*e + kd*de| of any DOF reaches that DOF's max effort (URDF effort limits). Optional anchored panel reach. --filter-contacts collision-filters G1 against the ISS colliders (the S1.3/S1.4
 condition); interference is then measured post hoc (plan_iss_activity.py mode "check"). Grasps are scripted
 constraints: nothing here validates contact, grasping or a controller.
@@ -243,6 +244,38 @@ def main():
             if ff:
                 art.set_dof_velocity_targets(np.zeros((1, len(prev)), dtype=np.float32))
 
+        servo_on = bool(ch.get("hand_servo", False))
+
+        def servo(E, hand, held, target, contacts, phase="servo", tol=0.02, iters=40):
+            """Closed-loop free-hand correction (resolved rate, measured state): solve the floating-base Jacobian
+            for [free-hand position = error, held-hand 6-D twist = 0] by damped least squares over the base and
+            the waist/arm DOFs (legs stay at the tuck), add the DOF part to the PD targets, settle 0.1 s, repeat
+            until the free hand is within tol of the target or progress stalls."""
+            art, names, dofs = E["art"], E["names"], E["dofs"]
+            fi, hi_ = names.index(HANDS[hand]), names.index(HANDS[held])
+            cols = [6 + k for k, d in enumerate(dofs) if not any(s in d for s in ("hip", "knee", "ankle"))]
+            var = list(range(6)) + cols
+            qt = art.get_dof_positions().numpy()[0].copy()
+            hist = []
+            for _ in range(iters):
+                p = E["bodies"].get_world_poses()[0].numpy().astype(float)
+                e = np.asarray(target, float) - p[fi]
+                hist.append(float(np.linalg.norm(e)))
+                if hist[-1] <= tol or (len(hist) > 6 and hist[-7] - hist[-1] < 0.002):
+                    break
+                J = art.get_jacobian_matrices().numpy()[0].astype(float)
+                A = np.vstack([J[fi, :3][:, var], J[hi_][:, var]])
+                b = np.r_[0.5 * e, np.zeros(6)]
+                dx = A.T @ np.linalg.solve(A @ A.T + 1e-3 * np.eye(9), b)
+                dq = np.clip(dx[6:], -0.05, 0.05)
+                for k, c in enumerate(cols):
+                    qt[c - 6] += dq[k]
+                qt = np.clip(qt, lo, hi_lim)
+                for _ in range(24):
+                    art.set_dof_position_targets(qt[None].astype(np.float32))
+                    step(E, phase, contacts)
+            return hist
+
         E = start_episode(ch["start_state"])
         rec["start_anchor_offset_m"] = E["anchor_offset_m"]
         E["max_effort"] = E["art"].get_dof_max_efforts().numpy()[0].astype(float)
@@ -302,6 +335,8 @@ def main():
                                     "pelvis_error_m": (float(np.linalg.norm(np.asarray(s_m["pelvis_pos"]) -
                                                                             np.asarray(st["frames"][-1]["pelvis_pos"])))
                                                        if st["frames"][-1].get("pelvis_pos") else None)}
+            if servo_on:
+                res["servo_after_move"] = servo(E, hand, E["anchor_hand"], target, contacts)
             pos, quat = (x.numpy().astype(float) for x in E["bodies"].get_world_poses())
             d0 = d = float(np.linalg.norm(target - pos[hi]))
             retries, trace = 0, []
@@ -325,9 +360,10 @@ def main():
                 for k in range(round(ch.get("hold_s", 1.0) / dt)):
                     art.set_dof_position_targets(path[-1][None])
                     step(E, "hold", contacts)
+                sv = servo(E, hand, E["anchor_hand"], target, contacts) if servo_on else None
                 pos, quat = (x.numpy().astype(float) for x in E["bodies"].get_world_poses())
                 d = float(np.linalg.norm(target - pos[hi]))
-                trace.append({"plan_free_hand_error_m": fix.get("free_hand_final_error_m"),
+                trace.append({"servo": sv, "plan_free_hand_error_m": fix.get("free_hand_final_error_m"),
                               "plan_free_hand_error_cc_m": fix.get("free_hand_error_cc_m"),
                               "plan_held_ori_drift_deg": fix.get("held_ori_drift_deg"),
                               "plan_success": fix.get("plan_success"), "hand_to_anchor_m": d})
@@ -375,6 +411,10 @@ def main():
                     step(E, "panel_reach", contacts)
                     pp = E["bodies"].get_world_poses()[0].numpy().astype(float)[ri]
                     dmin = min(dmin, float(np.linalg.norm(pp - np.asarray(pr["target"]))))
+                if servo_on:
+                    sv = servo(E, other, hand, pr["target"], contacts, phase="panel_reach")
+                    dmin = min(dmin, sv[-1])
+                    res["panel_servo"] = sv
                 res["panel_reach"] = {"hand": other, "min_distance_m": dmin, "planned_error_m": pr.get("reach_error_m")}
             rec["segments"].append(res)
             print(json.dumps({**{k: v for k, v in res.items() if k != "contacts"},

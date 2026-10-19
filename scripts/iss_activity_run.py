@@ -259,24 +259,32 @@ def main():
             cols = [6 + k for k, d in enumerate(dofs) if not any(s in d for s in ("hip", "knee", "ankle"))]
             var = list(range(6)) + cols
             qt = art.get_dof_positions().numpy()[0].copy()
-            hist = []
+            hist, best = [], (1e9, qt.copy())
             for _ in range(iters):
                 p = E["bodies"].get_world_poses()[0].numpy().astype(float)
                 e = np.asarray(target, float) - p[fi]
                 hist.append(float(np.linalg.norm(e)))
-                if hist[-1] <= tol or (len(hist) > 6 and hist[-7] - hist[-1] < 0.002):
+                if hist[-1] < best[0]:
+                    best = (hist[-1], qt.copy())
+                if hist[-1] <= tol or (len(hist) > 6 and hist[-7] - hist[-1] < 0.002) or hist[-1] > best[0] + 0.005:
                     break
                 J = art.get_jacobian_matrices().numpy()[0].astype(float)
                 A = np.vstack([J[fi, :3][:, var], J[hi_][:, var]])
-                b = np.r_[0.5 * e, np.zeros(6)]
+                b = np.r_[(0.5 if hist[-1] > 0.06 else 0.25) * e, np.zeros(6)]   # gentler near the target
                 dx = A.T @ np.linalg.solve(A @ A.T + 1e-3 * np.eye(9), b)
                 dq = np.clip(dx[6:], -0.05, 0.05)
                 for k, c in enumerate(cols):
                     qt[c - 6] += dq[k]
                 qt = np.clip(qt, lo, hi_lim)
-                for _ in range(24):
+                for _ in range(24 if hist[-1] > 0.06 else 48):
                     art.set_dof_position_targets(qt[None].astype(np.float32))
                     step(E, phase, contacts)
+            if hist[-1] > best[0] + 0.003:          # diverged (e.g. saturated held wrist): go back to the best targets
+                for _ in range(72):
+                    art.set_dof_position_targets(best[1][None].astype(np.float32))
+                    step(E, phase, contacts)
+                hist.append(float(np.linalg.norm(np.asarray(target, float)
+                                                 - E["bodies"].get_world_poses()[0].numpy().astype(float)[fi])))
             return hist
 
         E = start_episode(ch["start_state"])

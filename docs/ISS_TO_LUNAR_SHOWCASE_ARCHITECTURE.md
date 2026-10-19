@@ -671,6 +671,36 @@ tj3 details: capture error 0.5–3.8 cm (radius 4 cm); 0–4 corrective replans 
 
 - A 16-frame contact sheet of `main` was inspected: the robot is in frame throughout.
 
+### Planner tuning: offline benchmark on failure states (2026-10-19)
+
+**Verdict: PARTIAL.**
+- The planner tuning did not improve the `main` route in closed-loop runs. Steps captured:
+  - tj3: 23
+  - `full_main` (closed-chain refinement): 20
+  - `full_main3` (+ trajopt fallback): 18
+  - `full_main4` (+ stalled-retry diversification, since reverted): 16
+- Panel reach missed in all three new runs (5.7 / 8.4 / 9.7 cm).
+- The closed loop branches on small state differences, so one run per change cannot rank changes.
+
+**Benchmark** (`scripts/bench_iss_planner.py`):
+- **Method:** reconstructs each failed run's final state from its record and plans every variant from the same state.
+- **States:** 10 failures: `full_main` 21, `full_main3` 19, `full_main4` 17, `tj3` 24, and the `ab_*` ablation failures.
+- **"Reach"** means the closed-chain free-hand error is within 4 cm and there is no sphere penetration.
+
+| Variant | Reach | Mean closed-chain error | Total solve time |
+| --- | ---: | ---: | ---: |
+| IK step + closed-chain refinement (`step_nofb`) | 6 / 10 | 0.044 m | 243 s |
+| + trajopt fallback with large re-configuration seed (`step_fb`, committed) | 8 / 10 | 0.018 m | 680 s |
+| trajopt with large seed (`traj_large`) | 8 / 10 | 0.015 m | 545 s |
+| + pelvis goal shifted 0.15 m forward (`traj_large_shift`) | 8 / 10 | 0.016 m | 552 s |
+
+- **Remaining planner failures:**
+  - `full_main` 21: about 6 cm left.
+  - `full_main4` 17: 1.4 cm penetration.
+- **The larger gap is execution.** In 6 of the 10 states the planner reaches the anchor offline, yet the runs failed there. For example, `ab_ff1` step 8 plans to 0.1 cm but executed at 7.6 cm.
+- Execution error therefore comes from tracking and contacts under joint PD with the scripted held-hand joint, not from planning.
+- NOT_RUN: a controller that closes the loop on the free-hand position during the move.
+
 ## Claim ladder
 
 ### Allowed now

@@ -464,7 +464,7 @@ class Planner:
                                np.asarray(r["a_prev"], float), np.asarray(r["a_cur"], float),
                                np.asarray(r["a_next"], float), r["frames"])
         out = self.refine_cc(r, dict(st, frames=list(st["frames"])))
-        if not out["plan_success"]:
+        if not out["plan_success"] and not r.get("no_fallback"):
             # no small-swing IK step: trajectory optimisation, seeded with a large re-configuration if needed
             tr = self.traj_step(dict(r, allow_large_swing=True))
             if tr["plan_success"] or tr["free_hand_error_cc_m"] < out["free_hand_error_cc_m"] - 0.02:
@@ -498,7 +498,10 @@ class Planner:
         a_prev, a_cur, a_next = (np.asarray(r[k], float) for k in ("a_prev", "a_cur", "a_next"))
         fq = facing_quat(a_next - a_prev)
         mid = (a_prev + a_cur) / 2
-        goals = {"pelvis": (np.array([mid[0], mid[1], CENTRE_Z + 0.15]), fq),
+        u = np.r_[(a_next - a_prev)[:2], 0.0]
+        u = u / np.linalg.norm(u) if np.linalg.norm(u) > 1e-6 else np.zeros(3)
+        # pelvis_shift_m: retry diversification (the executor shifts the pelvis goal forward when retries stall)
+        goals = {"pelvis": (np.array([mid[0], mid[1], CENTRE_Z + 0.15]) + float(r.get("pelvis_shift_m", 0.0)) * u, fq),
                  HANDS[held]: (r["held_pos"], r["held_quat_wxyz"]), HANDS[free]: (a_cur, fq)}
         g = {k: Pose(position=T(to_plan_pt(p)), quaternion=T(wxyz(RP * rot(qq)))) for k, (p, qq) in goals.items()}
         # endpoint seed: the feasible IK candidate (no penetration, held <= HELD_TOL_M, free <= 4 cm, swing <=

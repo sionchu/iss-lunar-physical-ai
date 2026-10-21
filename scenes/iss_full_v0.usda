@@ -2964,7 +2964,7 @@ def Xform "World" (
                     def Cube "Anchor_09" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; shifted sideways from the route centre line (no clearance above it)"
                         }
                     )
                     {
@@ -2976,7 +2976,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-4.4619, -4.235309090909092, 4.857899999999982)
+                        double3 xformOp:translate = (-4.6119, -4.235309090909092, 4.0878999999999985)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -3002,7 +3002,7 @@ def Xform "World" (
                     def Cube "Anchor_11" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; shifted sideways from the route centre line (no clearance above it)"
                         }
                     )
                     {
@@ -3014,7 +3014,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-4.4619, -5.180763636363637, 4.857899999999982)
+                        double3 xformOp:translate = (-4.6119, -5.180763636363637, 4.057899999999999)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 

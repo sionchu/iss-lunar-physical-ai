@@ -613,6 +613,22 @@ def build_route_anchors(stage, M, hatches, name="main"):
                 prov = PLACEHOLDER_FREE_PROVENANCE
             while clearance(p) < ROUTE_MIN_CLEARANCE_M and p[2] > s[2]:   # lower toward the module axis
                 p = p - up * 0.01
+            if clearance(p) < ROUTE_MIN_CLEARANCE_M and name != "main":
+                # lowering reached the axis without clearance (equipment over the aisle, Node3): try the same
+                # placement shifted sideways, keep the highest candidate with clearance (main keeps its receipts)
+                side = np.cross(up, (pts[-1] - pts[0]) / np.linalg.norm(pts[-1] - pts[0]))
+                best = None
+                for off in (0.15, -0.15, 0.30, -0.30, 0.45, -0.45):
+                    s2 = s + side * off
+                    dz2 = float(ray_hits(tris, np.asarray([s2]), up)[0])
+                    q = s2 + up * min(dz2 - ROUTE_STANDOFF_M, ROUTE_MAX_RISE_M)
+                    while clearance(q) < ROUTE_MIN_CLEARANCE_M and q[2] > s2[2]:
+                        q = q - up * 0.01
+                    if clearance(q) >= ROUTE_MIN_CLEARANCE_M and (best is None or q[2] > best[2]):
+                        best = q
+                if best is not None:
+                    p = best
+                    prov = prov + "; shifted sideways from the route centre line (no clearance above it)"
         else:
             skipped.append(np.round(s, 3).tolist())          # ray leaves through an open port: no surface
             continue

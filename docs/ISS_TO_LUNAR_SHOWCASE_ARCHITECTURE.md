@@ -701,6 +701,36 @@ tj3 details: capture error 0.5–3.8 cm (radius 4 cm); 0–4 corrective replans 
 - Execution error therefore comes from tracking and contacts under joint PD with the scripted held-hand joint, not from planning.
 - NOT_RUN: a controller that closes the loop on the free-hand position during the move.
 
+### Hand servo, panel station, and microgravity vs ground comparison (2026-10-21)
+
+**Verdict: `main` COMPLETE in simulation (36/36, panel reach 1.5 cm), with the standing caveats; `jem` regressed.**
+
+Three changes produced this result:
+- **Hand servo** (`iss_activity_run.py` `hand_servo`). After each move or retry, and after the panel reach, a resolved-rate correction runs on the measured state:
+  - It uses the floating-base Jacobian, holds the held hand still in 6-D, and solves by damped least squares over the base, waist and arm DOFs.
+  - It keeps its best targets when it diverges (saturated held wrist) and is gentler within 6 cm.
+  - `full_main_sv` (first servo version) diverged at step 8 (4.4 → 5.6 cm); the fixed version completes `main`.
+- **Panel station.** Main anchor 12 is a task-defined PLACEHOLDER 0.35 m aft of the panel target, 0.425 m from it. From Handrail_B the panel was 0.93–0.96 m away, at G1's hand-span limit: the planned panel error matched the executed one in all five benchmarked states.
+- **Gravity option** (`--gravity`, comparison runs only). The planner is unchanged and assumes 0 g.
+
+| Run | Gravity | Steps captured | Capture error | Zero-contact steps | Frames penetrating (any / > 1 cm / > 3 cm) | Max penetration | Simulated |
+| --- | --- | --- | --- | ---: | --- | ---: | ---: |
+| `fin_main_0g_v2` | 0 | **36 / 36**, panel reach 1.5 cm | 0.1–2.7 cm | 7 | 12.7 % / 8.9 % / 0.4 % | 0.040 m | 508 s |
+| `fin_main_1g` | 9.81 | 0 / 36: step 1 missed at 17.5 cm, pelvis sagged to z −5.00 m | — | 0 | 52 % / 13 % / 0.9 % | 0.038 m | 57 s |
+| `fin_node3_0g` | 0 | **16 / 16** | 0.6–1.9 cm | 1 | 18.5 % / 11 % / 3.4 % | 0.045 m | 167 s |
+| `fin_jem_0g` | 0 | 3 / 18: step 4 retries 52.6 → 12.5 cm | — | 1 | 35 % / 25 % / 6.2 % | 0.043 m | 106 s |
+
+- `fin_main_0g` (servo before the fix) reached 7/36.
+- `jem` reached 18/18 without the servo (`full_jem`). The cause of the regression is UNKNOWN.
+- Penetration grew with the servo: up to 6.2 % of frames above 3 cm, against ≤ 0.8 % before. None exceeded 5 cm.
+
+**Videos** (outputs/iss_activity/, gitignored):
+- `iss_gravity_comparison.mp4` (1920×1620, 254 s):
+  - Top row: `fin_main_0g_v2` | `fin_main_1g`, side by side, same route, planner and controller.
+  - Bottom: `gui_gravity_raw.mp4`, looped. In the real Isaac Sim GUI, PhysicsScene `physics:gravityMagnitude` is set 0 → 9.81 through ChangePropertyCommand: six probe cubes drift, then fall. Session layer only; the Console lines are scripted.
+- **GUI capture method:** Kit captures its own window (swapchain). A first desktop (gdigrab) capture recorded another application's window instead of Isaac Sim; it was deleted unused, and desktop capture is no longer used.
+- `fin_main_0g_v2`, `fin_main_1g`, `fin_jem_0g` and `fin_node3_0g` are also rendered on their own (2× speed).
+
 ## Claim ladder
 
 ### Allowed now

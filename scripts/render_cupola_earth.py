@@ -41,6 +41,7 @@ TEX = ROOT / "assets" / "raw" / "earth" / "world.topo.200407.3x5400x2700.jpg"
 SCALE = 1e-3                      # 1:1000
 R_EARTH, ALT = 6371e3 * SCALE, 400e3 * SCALE
 ORBIT_S = 5550.0
+PHASE0 = 0.55                     # start shortly before orbital sunrise (the night pass was ~half of the clip)
 
 s = carb.settings.get_settings()
 for k, v in (("/rtx/rendermode", "PathTracing"), ("/rtx/pathtracing/spp", 1),
@@ -99,6 +100,9 @@ sun = UsdLux.DistantLight.Define(stage, "/World/Orbit/Sun")
 sun.CreateIntensityAttr(1200.0)
 sun.CreateAngleAttr(0.53)
 sun_r = UsdGeom.Xformable(sun).AddRotateXYZOp()
+night = UsdLux.DomeLight.Define(stage, "/World/Orbit/NightFill")   # faint fill so the night side is not pure black
+night.CreateIntensityAttr(25.0)
+night.CreateColorAttr(Gf.Vec3f(0.55, 0.65, 1.0))
 
 # The NASA Cupola mesh closes its windows with opaque panes; removing them in memory (glass + nearby faces, as holes,
 # cut-out material or deleted faces) still left the view blocked, so the Cupola mesh is hidden for this shot: the
@@ -112,7 +116,7 @@ cam.CreateFocalLengthAttr(12.0)
 cam.CreateHorizontalApertureAttr(36.0)
 cam.CreateVerticalApertureAttr(36.0 * args.height / args.width)
 cam.CreateClippingRangeAttr(Gf.Vec2f(0.02, 2.0 * (ALT + 2 * R_EARTH)))
-look = eye + np.array([0.9, 0.0, -1.0])                       # oblique: horizon in the upper part of the window
+look = eye + np.array([0.55, 0.0, -1.0])                      # oblique: limb near the top of the frame
 if args.debug_far:
     look = centre
     eye = centre + np.array([0.0, -3.0 * R_EARTH, 0.5 * R_EARTH])
@@ -131,7 +135,7 @@ shutil.rmtree(fdir, ignore_errors=True)
 fdir.mkdir(parents=True)
 n = int(args.seconds * args.fps)
 for k in range(n):
-    phase = k / n                                              # fraction of one orbit
+    phase = (k / n + PHASE0) % 1.0                             # fraction of one orbit
     ang = 360.0 * phase
     e_r.Set(Gf.Vec3f(90.0, ang, 0.0))       # equator under the station (sphere poles on +-z rotated to +-y = orbit
                                              # normal); the ground track moves under the Cupola

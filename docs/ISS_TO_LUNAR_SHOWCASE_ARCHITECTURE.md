@@ -731,6 +731,56 @@ Three changes produced this result:
 - **GUI capture method:** Kit captures its own window (swapchain). A first desktop (gdigrab) capture recorded another application's window instead of Isaac Sim; it was deleted unused, and desktop capture is no longer used.
 - `fin_main_0g_v2`, `fin_main_1g`, `fin_jem_0g` and `fin_node3_0g` are also rendered on their own (2× speed).
 
+### Servo fix, load metrics, and space scenes (2026-10-22)
+
+**Servo fix** (`iss_activity_run.py`). The hand servo now:
+- captures as soon as the hand is within 0.75 × the capture radius;
+- freezes on divergence instead of restoring earlier targets. In `fin_jem_0g`, restoring them moved the hand out to 15.7 cm because the floating base had already moved.
+
+Results with this code (contacts ON):
+
+| Run | Steps captured | Capture error | Zero-contact steps | Frames > 3 cm penetration | Max penetration | Joint work (sum / median per step) |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| `main_sv3` | **36 / 36**, panel reach 2.5 cm | 0.5–3.0 cm | 10 | 0.3 % | 0.034 m | 3,504 J / 50.5 J |
+| `jem_sv3` | **18 / 18** (was 3/18) | 0.9–3.0 cm | 4 | 0.8 % | 0.040 m | 1,875 J / 58.9 J |
+| `node3_sv3` | 11 / 16 (was 16/16 in `fin_node3_0g`) | — | 1 | 3.8 % | 0.040 m | 1,119 J / 64.7 J |
+
+- No servo or planner version has completed all three routes in one run. `node3` regressed while `jem` was fixed; the closed loop branches on small state differences, and the cause is UNKNOWN.
+
+**Load metrics** (per step):
+- External force on G1 = d(total linear momentum)/dt (handhold anchor joints + structure contacts), plus its max, p95 and median.
+- Joint work = Σ|projected joint force × joint speed|.
+- G1 mass: 33.3 kg.
+- `main_sv3` values:
+  - Per-step median force: about 7 N.
+  - Per-step p95: about 42 N (median over steps).
+  - Max: 1,638 N. This is a contact spike in a two-step finite difference and is not a sustained load.
+- The handhold anchor force cannot be separated from contact forces with this method. A comparison with ISS handrail load limits is NOT_RUN: no sourced limit is used.
+
+**Space scenes** (`scripts/iss_space_demos.py`, outputs/iss_demos/, gitignored). Both start from the `fin_main_0g_v2` state at step 9 in the US Lab.
+
+`handoff` (24 s):
+- An Astrobee carries a tool bar (PLACEHOLDER, 1 kg) to a point in front of G1's free shoulder:
+  - Visual: NASA `astrobee_freeflyer` meshes, Apache-2.0.
+  - Mass and inertia: from nasa/astrobee `model.urdf.xacro`.
+  - Propulsion: a PD force/torque stand-in, limited to 0.5 N (an assumed value).
+- It releases the bar with a scripted push of 0.06 m/s and 0.4 rad/s.
+- G1 holds its handhold and tracks the bar with its free arm only (resolved rate on the measured state). Capture at hand-to-bar-axis 6.1 cm, 6.1 s after release, with 0 structure contacts. The catch itself is a scripted fixed joint.
+- Two bugs fixed on the way:
+  - The capture joint's local frame must be given in the tool's scaled local space; the bug made the body snap 0.4 m.
+  - Driving the base in the catch swung the whole body.
+
+`pushoff` (31 s):
+- G1 drives its pelvis along the aisle at 0.12 m/s for 1.2 s with the held hand still, then releases.
+- The centre of mass drifts at 0.088 m/s.
+- From release to the first structure contact (4.25 s), G1's total linear momentum changes by at most 0.00018 kg·m/s (initial |P| = 2.9 kg·m/s) and its angular momentum by at most 0.00078 kg·m²/s. This is measured, from link masses, COMs, inertias and velocities.
+
+`cupola_earth` (30 s, `scripts/render_cupola_earth.py`):
+- The view from the Cupola position: Earth as NASA Blue Marble NG (provenance in assets/raw/earth/PROVENANCE.json; the usage terms page was not readable when fetched, so the terms are UNKNOWN).
+- Scale 1:1000 at 400 km, so Earth's angular size matches the orbit.
+- One orbit (92.5 min) compressed into 30 s, with the Sun turning at the orbital rate. Visual only; no orbital mechanics.
+- The NASA Cupola mesh's windows stay opaque after removing the glass and nearby faces (four attempts), so the Cupola mesh is hidden in this shot, as the overlay states.
+
 ## Claim ladder
 
 ### Allowed now

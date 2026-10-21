@@ -125,6 +125,8 @@ def main():
                                   for s in segs],
                "drive_saturation_fraction": [round(s["drive_saturation"]["fraction_of_samples"], 3) for s in segs],
                "contact_events_by_step": [sum((s.get("contacts") or {}).values()) for s in segs],
+               "g1_mass_kg": run.get("g1_mass_kg"),
+               "loads_by_step": [s.get("loads") for s in segs],
                "panel_reach": next((s["panel_reach"] for s in segs if s.get("panel_reach")), None),
                "contacts_filtered": run.get("contacts_filtered"),
                "contact_events_by_link": contact_totals(segs),

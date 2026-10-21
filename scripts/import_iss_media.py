@@ -1,4 +1,4 @@
-"""Convert the NASA Astrobee media meshes (7 ISS interior modules + 4 ISS handrail lengths) to USD.
+"""Convert the NASA Astrobee media meshes (7 ISS interior modules, 4 ISS handrail lengths, Astrobee free-flyer) to USD.
 
 Source: github.com/nasa/astrobee_media @ 1cb0620. Licensing is recorded as found, two statements:
 astrobee_iss/package.xml declares Apache-2.0, while the repository readme states that all multimedia is covered by
@@ -29,8 +29,10 @@ RAW = ROOT / "assets" / "raw" / "astrobee_media"
 OUT = ROOT / "assets" / "cache" / "iss_media"
 MODULES = ("us_lab", "node_1", "node_2", "node_3", "eu_lab", "jpm", "cupola")
 HANDRAILS = ("handrail_8_5", "handrail_21_5", "handrail_30", "handrail_41_5")
+FREEFLYER = ("body", "pmc", "pmc_bumper", "pmc_skin_bumble")   # Astrobee free-flyer visuals (package.xml Apache-2.0)
 ITEMS = {**{m: RAW / "astrobee_iss" / "meshes" / f"{m}.dae" for m in MODULES},
-         **{h: RAW / f"astrobee_{h}" / "meshes" / f"{h}.dae" for h in HANDRAILS}}
+         **{h: RAW / f"astrobee_{h}" / "meshes" / f"{h}.dae" for h in HANDRAILS},
+         **{f"astrobee_{f}": RAW / "astrobee_freeflyer" / "meshes" / f"{f}.dae" for f in FREEFLYER}}
 
 
 async def convert(src, dst):

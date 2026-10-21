@@ -92,7 +92,28 @@ def set_local(prim, m):
     o.Set(Gf.Quatf(r) if o.GetPrecision() == UsdGeom.XformOp.PrecisionFloat else Gf.Quatd(r))
 
 
+EXTRA_OPS = {}             # demo rigid bodies (iss_space_demos.py): tool bar, Astrobee
+for k, ex in (REC.get("extras") or {}).items():
+    root = UsdGeom.Xform.Define(stage, f"/World/Replay/{k}")
+    if ex["kind"] == "box":
+        bx = UsdGeom.Cube.Define(stage, f"/World/Replay/{k}/Box")
+        bx.CreateSizeAttr(1.0)
+        bx.CreateDisplayColorAttr([Gf.Vec3f(*ex["color"])])
+        UsdGeom.Xformable(bx).AddScaleOp().Set(Gf.Vec3f(*ex["size_m"]))
+    else:
+        for j, part in enumerate(ex["parts"]):
+            v = stage.DefinePrim(f"/World/Replay/{k}/Part_{j}", "Xform")
+            v.GetReferences().AddReference(str(ROOT / part["usd"]))
+            if part.get("rotate_x_deg"):
+                UsdGeom.Xformable(v).AddRotateXYZOp().Set(Gf.Vec3f(part["rotate_x_deg"], 0.0, 0.0))
+    EXTRA_OPS[k] = (UsdGeom.Xformable(root).AddTranslateOp(), UsdGeom.Xformable(root).AddOrientOp())
+
+
 def apply_frame(i):
+    for k, (t_op, o_op) in EXTRA_OPS.items():
+        p_, q_ = FR["extras"][k][i]
+        t_op.Set(Gf.Vec3d(*p_))
+        o_op.Set(Gf.Quatf(*[float(v) for v in q_]))
     pos, quat = FR["poses"][i]
     worlds = {p: world_m(pos[k], quat[k]) for k, p in enumerate(PATHS)}
     for p in PATHS:
@@ -115,8 +136,12 @@ stage.GetPrimAtPath("/World").GetVariantSets().GetVariantSet("truthLayer").SetVa
 pel = np.array([p for p, _ in FR["pelvis"]])
 # camera eye is kept on the module centre line (route anchors projected to the shared module axis height
 # z = -4.84 m): a free chase offset left the aisle (QA: 879 of 1735 frames black in the first render)
-spec = json.loads(Path(REC["spec"]).read_text(encoding="utf-8"))["chain"]
-CL = np.array([[a[0], a[1], -4.84] for a in spec["anchors"]])
+if REC.get("spec"):
+    spec = json.loads(Path(REC["spec"]).read_text(encoding="utf-8"))["chain"]
+    CL = np.array([[a[0], a[1], -4.84] for a in spec["anchors"]])
+else:                         # demos: a straight centre line along the US Lab (+x) through the start pelvis
+    spec = {"route": "demo"}
+    CL = np.array([[pel[:, 0].min() - 3.0, pel[0, 1], -4.84], [pel[:, 0].max() + 3.0, pel[0, 1], -4.84]])
 
 
 SEG = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(CL, axis=0), axis=1))]      # arc length at each anchor
@@ -173,8 +198,12 @@ for i in range(0, len(FR["t"]), args.every):
     if not args.start_s <= FR["t"][i] <= args.end_s:
         continue
     apply_frame(i)
-    eye = at_arc(arc[i] - CAM_BACK_M) + np.array([0, 0, 0.10])
-    look = 0.5 * (smooth[i] + at_arc(arc[i] + 0.4))          # pelvis, pulled toward the centre line ahead
+    if REC.get("demo"):       # demos: oblique view from behind-left of the action, following the pelvis slowly
+        look = smooth[0] + np.array([0.55, 0.0, 0.25]) + 0.5 * (smooth[i] - smooth[0])
+        eye = np.array([look[0] - 1.15, pel[0, 1] - 0.6, -4.55])
+    else:
+        eye = at_arc(arc[i] - CAM_BACK_M) + np.array([0, 0, 0.10])
+        look = 0.5 * (smooth[i] + at_arc(arc[i] + 0.4))      # pelvis, pulled toward the centre line ahead
     cam_op.Set(Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*look), Gf.Vec3d(0, 0, 1)).GetInverse())
     if args.fill > 0:
         fl_op.Set(Gf.Vec3d(*(eye + np.array([0, 0, 0.15]))))
@@ -193,14 +222,22 @@ for i in range(0, len(FR["t"]), args.every):
     status = f"step {nxt[1]} of {REC.get('total_steps')}" if nxt else (f"step {done[-1][1]}: {done[-1][2]}" if done else "")
     cur = nxt[1] if nxt else (done[-1][1] if done else None)
     g_txt = f"gravity {REC.get('gravity_m_s2', 0.0):g} m/s²" if REC.get("gravity_m_s2") else "microgravity (0 g)"
-    lines = [(f"G1 · PhysX · {g_txt} · hand-over-hand {ROUTE_TEXT.get(route, route)} · closed-loop cuRobo",
-              font),
-             (f"t = {t:5.1f} s   {status}   captures so far: {sum(e[2] == 'CAPTURED' for e in done)}"
-              + ("" if REC.get("contacts_filtered") or cur not in cev else f"   contact events this step: {cev[cur]}"),
-              font),
-             ("scripted grasps (fixed joints) · PLACEHOLDER handholds outside the S1 rail and hatch rims · "
-              + ("G1-ISS contacts filtered" if REC.get("contacts_filtered") else "G1-ISS contacts ON (PhysX)")
-              + (f" · {args.speed:g}x speed" if args.speed != 1 else ""), small)]
+    if REC.get("demo"):
+        demo_text = {"handoff": "Astrobee hands over a tool; G1 catches it with its free hand",
+                     "pushoff": "G1 pushes off the handhold and drifts: momentum is conserved"}[REC["demo"]]
+        lines = [(f"G1 · PhysX · {g_txt} · {demo_text}", font), (f"t = {t:5.1f} s   phase: {FR['phase'][i]}", font),
+                 ("scripted grasps (fixed joints) · Astrobee propulsion = PD force stand-in (0.5 N limit, assumed) · "
+                  "tool bar PLACEHOLDER · contacts ON" + (f" · {args.speed:g}x speed" if args.speed != 1 else ""),
+                  small)]
+    else:
+        lines = [(f"G1 · PhysX · {g_txt} · hand-over-hand {ROUTE_TEXT.get(route, route)} · closed-loop cuRobo",
+                  font),
+                 (f"t = {t:5.1f} s   {status}   captures so far: {sum(e[2] == 'CAPTURED' for e in done)}"
+                  + ("" if REC.get("contacts_filtered") or cur not in cev else f"   contact events this step: {cev[cur]}"),
+                  font),
+                 ("scripted grasps (fixed joints) · PLACEHOLDER handholds outside the S1 rail and hatch rims · "
+                  + ("G1-ISS contacts filtered" if REC.get("contacts_filtered") else "G1-ISS contacts ON (PhysX)")
+                  + (f" · {args.speed:g}x speed" if args.speed != 1 else ""), small)]
     y = int(18 * args.width / 1280)
     dr.rectangle([0, 0, img.size[0], y + sum(int(f.size * 1.4) for _, f in lines) + 6], fill=(0, 0, 0, 110))
     for text, f in lines:

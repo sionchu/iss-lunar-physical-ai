@@ -185,6 +185,22 @@ def main():
         def step(E, phase, contacts):
             SimulationManager.step(steps=1)
             clock[0] += dt
+            met = E.get("met")
+            if met is not None and round(clock[0] / dt) % 2 == 0:
+                # loads: total external force on G1 = d(linear momentum)/dt (handhold anchor joints + structure
+                # contacts); actuator work = sum |joint force * joint speed| from the projected joint forces
+                lin = E["bodies"].get_velocities()[0].numpy().astype(float)
+                P = (E["mass"][:, None] * lin).sum(axis=0)
+                if met.get("P") is not None:
+                    F = float(np.linalg.norm(P - met["P"]) / (2 * dt))
+                    met["f_max"] = max(met["f_max"], F)
+                    met["f"].append(F)
+                    met["impulse"] += F * 2 * dt
+                tau = E["art"].get_dof_projected_joint_forces().numpy()[0].astype(float)
+                qd = E["art"].get_dof_velocities().numpy()[0].astype(float)
+                met["energy"] += float(np.abs(tau * qd).sum()) * 2 * dt
+                met["tau_max"] = max(met["tau_max"], float(np.abs(tau).max()))
+                met["P"] = P
             headers, _ = sim.get_contact_report()
             for h in headers or []:
                 a0, a1 = (str(PhysicsSchemaTools.intToSdfPath(h.actor0)), str(PhysicsSchemaTools.intToSdfPath(h.actor1)))
@@ -249,24 +265,33 @@ def main():
 
         servo_on = bool(ch.get("hand_servo", False))
 
-        def servo(E, hand, held, target, contacts, phase="servo", tol=0.02, iters=40):
+        def servo(E, hand, held, target, contacts, phase="servo", tol=0.75 * CAPTURE_R, iters=40):
             """Closed-loop free-hand correction (resolved rate, measured state): solve the floating-base Jacobian
             for [free-hand position = error, held-hand 6-D twist = 0] by damped least squares over the base and
             the waist/arm DOFs (legs stay at the tuck), add the DOF part to the PD targets, settle 0.1 s, repeat
-            until the free hand is within tol of the target or progress stalls."""
+            until the free hand is within tol of the target (inside the capture radius: capture right away instead of
+            polishing, which drifted out again in fin_jem_0g) or progress stalls; on divergence it freezes at the
+            measured joints (restoring earlier targets did not restore the hand: the floating base had moved)."""
             art, names, dofs = E["art"], E["names"], E["dofs"]
             fi, hi_ = names.index(HANDS[hand]), names.index(HANDS[held])
             cols = [6 + k for k, d in enumerate(dofs) if not any(s in d for s in ("hip", "knee", "ankle"))]
             var = list(range(6)) + cols
             qt = art.get_dof_positions().numpy()[0].copy()
-            hist, best = [], (1e9, qt.copy())
+            hist, best = [], 1e9
             for _ in range(iters):
                 p = E["bodies"].get_world_poses()[0].numpy().astype(float)
                 e = np.asarray(target, float) - p[fi]
                 hist.append(float(np.linalg.norm(e)))
-                if hist[-1] < best[0]:
-                    best = (hist[-1], qt.copy())
-                if hist[-1] <= tol or (len(hist) > 6 and hist[-7] - hist[-1] < 0.002) or hist[-1] > best[0] + 0.005:
+                best = min(best, hist[-1])
+                if hist[-1] <= tol or (len(hist) > 6 and hist[-7] - hist[-1] < 0.002):
+                    break
+                if hist[-1] > best + 0.005:          # diverging: freeze where it is
+                    q_now = art.get_dof_positions().numpy()[0]
+                    for _ in range(48):
+                        art.set_dof_position_targets(q_now[None].astype(np.float32))
+                        step(E, phase, contacts)
+                    hist.append(float(np.linalg.norm(np.asarray(target, float)
+                                                     - E["bodies"].get_world_poses()[0].numpy().astype(float)[fi])))
                     break
                 J = art.get_jacobian_matrices().numpy()[0].astype(float)
                 A = np.vstack([J[fi, :3][:, var], J[hi_][:, var]])
@@ -279,16 +304,18 @@ def main():
                 for _ in range(24 if hist[-1] > 0.06 else 48):
                     art.set_dof_position_targets(qt[None].astype(np.float32))
                     step(E, phase, contacts)
-            if hist[-1] > best[0] + 0.003:          # diverged (e.g. saturated held wrist): go back to the best targets
-                for _ in range(72):
-                    art.set_dof_position_targets(best[1][None].astype(np.float32))
-                    step(E, phase, contacts)
-                hist.append(float(np.linalg.norm(np.asarray(target, float)
-                                                 - E["bodies"].get_world_poses()[0].numpy().astype(float)[fi])))
             return hist
 
         E = start_episode(ch["start_state"])
+        E["mass"] = E["bodies"].get_masses().numpy().astype(float).reshape(-1)
+        rec["g1_mass_kg"] = float(E["mass"].sum())
         rec["start_anchor_offset_m"] = E["anchor_offset_m"]
+
+        def loads(met):
+            f = np.asarray(met["f"] or [0.0])
+            return {"external_force_max_N": round(met["f_max"], 2), "external_force_p95_N": round(float(np.percentile(f, 95)), 2),
+                    "external_force_median_N": round(float(np.median(f)), 2), "external_impulse_Ns": round(met["impulse"], 3),
+                    "actuator_work_J": round(met["energy"], 3), "joint_force_max": round(met["tau_max"], 2)}
         E["max_effort"] = E["art"].get_dof_max_efforts().numpy()[0].astype(float)
         rec["dof_max_effort"] = dict(zip(E["dofs"], E["max_effort"].round(3).tolist()))
         rec["control"] = {"gains": [kp, kd], "velocity_feedforward": ff, "time_scale": tscale}
@@ -319,6 +346,7 @@ def main():
                 raise RuntimeError(f"planner: {st['error']}")
             st.update({"step": i, "duration_s": max(ch.get("duration_s", 2.5), st.get("suggested_duration_s", 0.0))})
             sat = {"samples": 0, "any": 0, "by_dof": {}}
+            E["met"] = {"f_max": 0.0, "impulse": 0.0, "energy": 0.0, "tau_max": 0.0, "P": None, "f": []}
             contacts, res = {}, {"step": st["step"], "free_hand": st["free_hand"], "anchor": st["anchor"],
                                        "plan_success": st.get("plan_success"),
                                        "plan_free_hand_error_m": st.get("free_hand_final_error_m"),
@@ -385,6 +413,7 @@ def main():
                                              "by_dof": dict(sorted(sat["by_dof"].items(), key=lambda x: -x[1])[:5])}})
             if not captured and d > CAPTURE_R:
                 res["status"] = "FAIL_NO_CAPTURE"
+                res["loads"] = loads(E["met"])
                 res["contacts"] = contacts
                 rec["segments"].append(res)
                 print(json.dumps(res), flush=True)
@@ -401,6 +430,7 @@ def main():
             res.update({"status": "CAPTURED", "t_s": round(clock[0], 3), "pelvis_pos": s_["pelvis_pos"],
                         "pelvis_speed_m_s": float(np.linalg.norm(s_["pelvis_lin_vel"])),
                         "max_link_speed_m_s": s_["max_link_speed_m_s"], "contacts": contacts})
+            res["loads"] = loads(E["met"])        # panel reach (below) is not included
             pr = None
             if ch.get("panel") and ch["panel"]["after_anchor"] == st["step"]:
                 s_ = state_of(E)

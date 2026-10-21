@@ -781,6 +781,39 @@ Results with this code (contacts ON):
 - One orbit (92.5 min) compressed into 30 s, with the Sun turning at the orbital rate. Visual only; no orbital mechanics.
 - The NASA Cupola mesh's windows stay opaque after removing the glass and nearby faces (four attempts), so the Cupola mesh is hidden in this shot, as the overlay states.
 
+### Node3 anchors, three-route status and showcase reel (2026-10-22)
+
+**Node3 anchors.**
+- Two placeholders (route indices 9 and 11) had been lowered to the centre line: equipment hangs over the Node3 aisle there, and lowering was the only way to get 0.20 m clearance. That left a 0.94 m (mostly vertical) gap to the next anchor.
+- `build_iss_full.py` now shifts such samples sideways by 0.15–0.45 m (non-main routes only) and keeps the highest candidate with clearance. The provenance records the shift.
+- The Node3 maximum gap went from 0.94 m to 0.60 m. Only those two anchors changed. Checker: still 36/37.
+
+**Rerun with the current code, `node3_sv4`: 6/16.**
+- Step 7 failed just past the Node1–Node3 hatch: the pelvis lags 0.66 m behind the rising anchor, and replans plus the servo stall at 8.5–15 cm.
+- Earlier runs of `node3`, by code version:
+
+  | Run | Steps captured |
+  | --- | ---: |
+  | `full_node3` (no servo) | 16/16 |
+  | `fin_node3_0g` (first servo) | 16/16 |
+  | `node3_sv3` | 11/16 |
+  | `node3_sv4` | 6/16 |
+
+- No single code version has completed all three routes. The closed loop branches on small state differences, and the hatch-exit step is the recurring failure (main step 21 earlier, now Node3 step 7). Cause beyond that: UNKNOWN.
+
+**Showcase reel.**
+- `scripts/compose_showcase.py` produces outputs/iss_demos/iss_showcase.mp4 (gitignored): 1920×1080, 228 s.
+- Segments:
+  1. title;
+  2. `main_sv3` at 6× speed;
+  3. `jem_sv3` | `fin_node3_0g` side by side. The Node3 clip is from the earlier servo version, and its caption says so;
+  4. Astrobee handoff;
+  5. push-off;
+  6. Cupola Earth;
+  7. 0 g vs ground excerpt;
+  8. end card.
+- Every caption number is read from the run and demo summary JSONs.
+
 ## Claim ladder
 
 ### Allowed now

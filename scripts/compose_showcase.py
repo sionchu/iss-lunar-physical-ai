@@ -37,6 +37,7 @@ def main():
     ap.add_argument("--main", default="main_sv3")
     ap.add_argument("--jem", default="jem_sv3")
     ap.add_argument("--node3", default="node3_sv4")
+    ap.add_argument("--node3-note", default="", help="caption suffix, e.g. which controller version the clip is from")
     ap.add_argument("--out", type=Path, default=DEM / "iss_showcase.mp4")
     args = ap.parse_args()
     tmp = DEM / "_showcase"
@@ -59,7 +60,7 @@ def main():
                      f"drawtext=fontfile='{FONT}':textfile='{ffp(tf)}':fontsize=44:fontcolor=white:line_spacing=18:"
                      f"x=(w-text_w)/2:y=(h-text_h)/2", secs))
 
-    def clip(name, src, caption, speed=1.0, max_s=None):
+    def clip(name, src, caption, speed=1.0, max_s=None, top=False):
         tf = tmp / f"{name}.txt"
         with open(tf, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(caption)
@@ -68,7 +69,7 @@ def main():
         g = (f"setpts=PTS/{speed},fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
              f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,trim=duration={secs:.2f},setpts=PTS-STARTPTS,"
              f"drawtext=fontfile='{FONT}':textfile='{ffp(tf)}':fontsize=34:fontcolor=white:box=1:"
-             f"boxcolor=black@0.6:boxborderw=12:x=(w-text_w)/2:y=h-110")
+             f"boxcolor=black@0.6:boxborderw=12:line_spacing=8:x=(w-text_w)/2:y={'20' if top else 'h-text_h-40'}")
         segs.append((name, [str(src)], g, secs))
 
     card("title", "ISS 안의 휴머노이드 로봇\nUnitree G1 · Isaac Sim 6.0.1 PhysX · 미세중력 0 g\n\n"
@@ -78,9 +79,9 @@ def main():
          + (f", 정비 패널 손 뻗기 {pr['min_distance_m'] * 100:.1f}cm" if pr else "") + " (6배속)", speed=3.0)
     # JEM | Node3 side by side
     tj, tn = tmp / "jem.txt", tmp / "node3.txt"
-    for f, s, lbl in ((tj, sj, "Node2 → JEM"), (tn, sn, "Node1 → Node3")):
+    for f, s, lbl, note in ((tj, sj, "Node2 → JEM", ""), (tn, sn, "Node1 → Node3", args.node3_note)):
         with open(f, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(f"{lbl}: {steps(s)} 포획")
+            fh.write(f"{lbl}: {steps(s)} 포획{note}")
     dj, dn = duration(ACT / f"{args.jem}.mp4") / 2, duration(ACT / f"{args.node3}.mp4") / 2
     secs = max(dj, dn)
     g2 = (f"[{{a}}:v]setpts=PTS/2,fps={FPS},scale=960:540,tpad=stop_mode=clone:stop_duration={secs - dj + 0.1:.2f},"
@@ -93,8 +94,8 @@ def main():
     segs.append(("jem_node3", [str(ACT / f"{args.jem}.mp4"), str(ACT / f"{args.node3}.mp4")], g2, secs))
     c = sh["catch"]
     clip("handoff", DEM / "handoff.mp4",
-         f"Astrobee(NASA 모델, 9.09kg)가 공구 전달 → G1이 자유 팔로 추적해 잡음 ({c['status']}, 놓은 뒤 "
-         f"{c['t_s'] - sh['release']['t_s']:.1f}초) · 추진은 힘 제어 근사, 잡기는 고정 조인트")
+         f"Astrobee가 공구 전달 → G1이 놓은 뒤 {c['t_s'] - sh['release']['t_s']:.1f}초 만에 잡음\n"
+         "Astrobee 추진은 힘 제어 근사 · 잡기는 스크립트 고정 조인트")
     clip("pushoff", DEM / "pushoff.mp4",
          f"밀고 놓기: 질량중심 {mc['com_speed_m_s']:.3f} m/s 표류 · 놓은 뒤 {mc['window_s'][1] - mc['window_s'][0]:.2f}초 동안 "
          f"운동량 변화 ≤ {mc['max_dP_kg_m_s']:.5f} kg·m/s (보존)", speed=1.5)
@@ -102,9 +103,9 @@ def main():
          "Cupola 위치에서 본 지구 · 한 궤도 92.5분을 30초로 · NASA Blue Marble · 시각 연출(궤도 역학 없음)")
     comp = ACT / "iss_gravity_comparison.mp4"
     if comp.exists():
-        clip("gravity", comp, "같은 모듈·같은 제어기, 중력만 0 → 9.81 m/s²: 지구 중력에선 첫 손잡이부터 실패", max_s=30.0)
+        clip("gravity", comp, "같은 모듈·같은 제어기, 중력만 0 → 9.81 m/s²: 지구 중력에선 첫 손잡이부터 실패", max_s=30.0, top=True)
     card("end", "정리\n\n"
-         f"main {steps(sm)} · JEM {steps(sj)} · Node3 {steps(sn)} (접촉 ON)\n"
+         f"main {steps(sm)} · JEM {steps(sj)} · Node3 {steps(sn)}{args.node3_note} (접촉 ON)\n"
          "손잡이 일부는 공개 배치도가 없어 가상(PLACEHOLDER) · 파지는 스크립트 고정 조인트\n\n"
          "다음: 같은 실험 틀로 달 표면 1/6 g 보행 (Lunar v0)", 6)
 

@@ -499,6 +499,7 @@ PLACEHOLDER_PROVENANCE = ("PLACEHOLDER: no public ISS handrail layout; virtual h
 PLACEHOLDER_FREE_PROVENANCE = ("PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more "
                                "than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that "
                                "height with no structure behind it")
+ROUTE_MAX_STEP_UP_M = 0.15   # non-main routes: a placeholder rises at most this much above the previous anchor
 PANEL_STATION_BACK_M = 0.35
 PANEL_STATION_PROVENANCE = ("PLACEHOLDER (panel station): task-defined virtual handhold PANEL_STATION_BACK aft of the "
                             "maintenance-panel target at the placeholder height; no public ISS handrail layout")
@@ -629,6 +630,11 @@ def build_route_anchors(stage, M, hatches, name="main"):
                 if best is not None:
                     p = best
                     prov = prov + "; shifted sideways from the route centre line (no clearance above it)"
+            if name != "main" and out and p[2] > out[-1]["pos_scene_m"][2] + ROUTE_MAX_STEP_UP_M:
+                # ramp up from a low anchor (hatch rim) instead of jumping to the ceiling: node3_sv4 stuck at the
+                # +0.36 m step out of the Node1-Node3 hatch with the pelvis level with the held hand
+                p = np.array([p[0], p[1], out[-1]["pos_scene_m"][2] + ROUTE_MAX_STEP_UP_M])
+                prov = prov + "; height ramped from the previous anchor"
         else:
             skipped.append(np.round(s, 3).tolist())          # ray leaves through an open port: no surface
             continue

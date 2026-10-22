@@ -2562,7 +2562,7 @@ def Xform "World" (
                     def Cube "Anchor_07" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it"
+                            string provenance = "PLACEHOLDER (free-standing): no public ISS handrail layout; the overhead surface is more than ROUTE_MAX_RISE above the route centre line, so the virtual handhold is held at that height with no structure behind it; height ramped from the previous anchor"
                         }
                     )
                     {
@@ -2574,7 +2574,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (10.9532, -3.7341000000000006, 4.035699999999999)
+                        double3 xformOp:translate = (10.9532, -3.7341000000000006, 4.115699999999999)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -2926,7 +2926,7 @@ def Xform "World" (
                     def Cube "Anchor_07" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; height ramped from the previous anchor"
                         }
                     )
                     {
@@ -2938,14 +2938,14 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-4.4619, -3.2898545454545456, 4.0479)
+                        double3 xformOp:translate = (-4.4619, -3.2898545454545456, 4.2641)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
                     def Cube "Anchor_08" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line"
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; height ramped from the previous anchor"
                         }
                     )
                     {
@@ -2957,7 +2957,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-4.4619, -3.7625818181818182, 4.047899999999999)
+                        double3 xformOp:translate = (-4.4619, -3.7625818181818182, 4.114099999999999)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 
@@ -3002,7 +3002,7 @@ def Xform "World" (
                     def Cube "Anchor_11" (
                         prepend apiSchemas = ["MaterialBindingAPI"]
                         customData = {
-                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; shifted sideways from the route centre line (no clearance above it)"
+                            string provenance = "PLACEHOLDER: no public ISS handrail layout; virtual handhold ROUTE_STANDOFF below the overhead mesh surface found by ray-casting the source meshes along the route centre line; shifted sideways from the route centre line (no clearance above it); height ramped from the previous anchor"
                         }
                     )
                     {
@@ -3014,7 +3014,7 @@ def Xform "World" (
                         double size = 1
                         float3 xformOp:rotateXYZ = (0, 0, 0)
                         float3 xformOp:scale = (0.04, 0.04, 0.04)
-                        double3 xformOp:translate = (-4.6119, -5.180763636363637, 4.057899999999999)
+                        double3 xformOp:translate = (-4.6119, -5.180763636363637, 4.177899999999998)
                         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
                     }
 

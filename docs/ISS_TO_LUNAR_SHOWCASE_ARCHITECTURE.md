@@ -814,6 +814,28 @@ Results with this code (contacts ON):
   8. end card.
 - Every caption number is read from the run and demo summary JSONs.
 
+### All three routes with one code version (2026-10-22, commit 8206c91)
+
+**Fix.** On non-main routes, a placeholder now rises at most 0.15 m above the previous anchor (`ROUTE_MAX_STEP_UP_M`), so routes ramp out of a hatch rim instead of jumping to the ceiling:
+- Node3 hatch exit: −4.41 → −4.26 → −4.11 m.
+- Two JEM anchors changed. Main is unchanged.
+- The provenance records the ramp.
+- Diagnosis behind it (offline, `node3_sv4` step 7): the held hand sat level with the pelvis at the hatch rim and the next anchor was +0.36 m higher. A pull-through move with the held hand fixed could not advance the pelvis more than about 0.12 m, so that move was dropped.
+
+**Results**, contacts ON, hand servo on, one run per route:
+
+| Run | Steps captured | Capture error | Zero-contact steps | Frames penetrating (any / > 1 cm / > 3 cm / > 5 cm) | Max penetration | Simulated |
+| --- | --- | --- | ---: | --- | ---: | ---: |
+| `main_sv5` | **36 / 36**, panel reach 2.5 cm | 0.5–3.0 cm | 10 | 12.9 % / 6.4 % / 0.3 % / 0 % | 0.034 m | 350 s |
+| `jem_sv5` | **18 / 18** | 1.1–3.0 cm | 3 | 8.5 % / 5.9 % / 0.3 % / 0 % | 0.038 m | 214 s |
+| `node3_sv5` | **16 / 16** | 0.1–2.7 cm | 2 | 13 % / 9.6 % / 1.2 % / 0 % | 0.039 m | 179 s |
+
+- **Repeatability:** UNKNOWN. These are single runs, and earlier versions showed the closed loop branching on small state differences.
+- **Standing caveats:**
+  - Handholds outside the S1 rail and hatch rims are PLACEHOLDERs.
+  - Grasps are scripted fixed joints.
+  - The Cupola is NOT_RUN.
+
 ## Claim ladder
 
 ### Allowed now

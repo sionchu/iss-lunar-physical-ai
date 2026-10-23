@@ -1,6 +1,6 @@
 # Lunar v0 Plan (Slice B: Moon physics v0)
 
-Status: **PLAN — not started.** Implementation, downloads and long GPU training runs are approval gates.
+Status: **gates APPROVED by the project owner on 2026-10-23 (section 5); implementation not started.** Downloads and long GPU training runs remain approval gates.
 
 Sources of scope:
 - [RESEARCH_BASELINE.md](RESEARCH_BASELINE.md): §5 lunar hypotheses and gates, §6 shared contract, §7 Slice B.
@@ -55,7 +55,7 @@ The zero-g hand-over-hand planner does not apply to walking. Lunar v0 needs a le
 
 | Step | What | Where | Cost (estimate, UNKNOWN until measured) |
 | --- | --- | --- | --- |
-| P0 | Check for an existing G1 velocity checkpoint. None found locally: `C:\dev\IsaacLab\logs` holds only UR10e/Franka runs. | — | minutes |
+| P0 | Check for an existing G1 velocity checkpoint. None found in the local IsaacLab install's logs (only UR10e/Franka runs). | — | minutes |
 | P1 | Earth baseline: train the IsaacLab `G1` flat velocity task (`isaaclab_tasks/.../locomotion/velocity/config/g1`, IsaacLab @418ca31) at 9.81 m/s². | local RTX 4070 Ti | several hours; GPU shared with the user's IsaacLab jobs |
 | P2 | Lunar fine-tune from P1 at 1.62 m/s² (hypothesis L1). | same | ~1/3 of P1 (guess) |
 | P3 | Lunar from scratch at 1.62 m/s² (L1 comparison). | same | ≈ P1 |
@@ -66,9 +66,9 @@ The zero-g hand-over-hand planner does not apply to walking. Lunar v0 needs a le
 
 ## 5. Gates
 
-Thresholds are proposed now and must be fixed before any evaluation (gate 2). They are proposals to approve, not results.
+Thresholds approved by the project owner on 2026-10-23, before any evaluation (gate 2). They are fixed for v0: changing them after results exist would be tuning to pass. They are criteria, not results.
 
-| Metric | Definition | Proposed PASS |
+| Metric | Definition | PASS (approved) |
 | --- | --- | --- |
 | Success | reaches every waypoint within 0.3 m, no fall | ≥ 9/10 evaluation seeds |
 | Fall | pelvis height < 0.45 m, or torso tilt > 60° | 0 on PASS seeds |

@@ -90,6 +90,13 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 5. Renders: S5 clip, ISS ↔ Moon split end frame.
 6. Docs: a receipt in the architecture doc, mirroring the ISS receipts.
 
+## 6a. Run log
+
+- **2026-10-24: P1 queued.**
+  - Task `Isaac-Velocity-Flat-G1-v0`, rsl_rl PPO, 1500 iterations (task default), training seed 42, Earth gravity (task default), run name `lunar_v0_p1_earth`.
+  - Logs are in the local IsaacLab install, outside git.
+- **Deviation from section 2:** the IsaacLab G1 tasks use IsaacLab's own G1 asset (`G1_MINIMAL_CFG`, Nucleus `Robots/Unitree/G1/g1_minimal.usd`), not the project's `g1_29dof_rev_1_0` URDF. v0 results apply to that asset. Moving the policy to the project URDF needs its own task config and is deferred.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

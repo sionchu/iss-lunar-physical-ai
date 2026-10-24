@@ -78,6 +78,7 @@ def run_seed(seed, env_cfg, agent_cfg):
     wps = [(p0 + R0 @ np.array([x, y]), stop) for x, y, stop in COURSE]
     k, stop_left, t = 0, None, 0.0
     slip, track_err, torque_hits, steps, energy, dist = [], [], 0, 0, 0.0, 0.0
+    joint_hits = np.zeros(len(lim), int)
     fall, reached, prev = None, 0, p0.copy()
     while t < args.time_limit and k < len(wps):
         pos = T(robot.data.root_pos_w)[0, :2].cpu().numpy()
@@ -125,7 +126,9 @@ def run_seed(seed, env_cfg, agent_cfg):
                 slip.append(float(np.linalg.norm(v)))
         tau = T(robot.data.applied_torque)[0].cpu().numpy()
         qd = T(robot.data.joint_vel)[0].cpu().numpy()
-        torque_hits += int(np.any(np.abs(tau) >= 0.99 * lim))
+        hit = np.abs(tau) >= 0.99 * lim
+        torque_hits += int(np.any(hit))
+        joint_hits += hit
         energy += float(np.abs(tau * qd).sum()) * dt
         dist += float(np.linalg.norm(pos - prev))
         prev = pos.copy()
@@ -135,6 +138,9 @@ def run_seed(seed, env_cfg, agent_cfg):
             "slip_median_m_s": round(float(np.median(slip)), 4) if slip else None,
             "tracking_rms_m_s": round(float(np.sqrt(np.mean(np.square(track_err)))), 4) if track_err else None,
             "torque_limit_frac": round(torque_hits / max(steps, 1), 4),
+            "torque_limit_by_joint": {robot.joint_names[j]: {"frac": round(int(joint_hits[j]) / max(steps, 1), 4),
+                                                            "effort_limit": round(float(lim[j]), 2)}
+                                      for j in np.argsort(-joint_hits)[:6] if joint_hits[j] > 0},
             "energy_J_per_m": round(energy / max(dist, 1e-6), 2), "distance_m": round(dist, 2)}
 
 
@@ -153,20 +159,24 @@ def main(env_cfg, agent_cfg):
         for seed in args.seeds:
             results.append(run_seed(seed, env_cfg, agent_cfg))
             print(json.dumps(results[-1]), flush=True)
+            write(results)            # inside the context: closing the Kit app ends the process (first run lost it)
+
+
+def write(results):
     ok = [r for r in results if r["success"]]
 
     def med(key):
         v = [r[key] for r in ok if r[key] is not None]
         return float(np.median(v)) if v else None
     summary = {"checkpoint": args.checkpoint, "task": TASK, "gravity_m_s2": args.gravity, "seeds": args.seeds,
-               "course_start_frame_m": COURSE, "gates": GATES, "successes": len(ok),
+               "seeds_done": len(results), "course_start_frame_m": COURSE, "gates": GATES, "successes": len(ok),
                "falls_on_success": sum(r["fall"] is not None for r in ok),
                "slip_median_m_s": med("slip_median_m_s"), "tracking_rms_m_s": med("tracking_rms_m_s"),
                "torque_limit_frac": med("torque_limit_frac"), "energy_J_per_m": med("energy_J_per_m")}
     summary["pass"] = bool(summary["successes"] >= GATES["success_min"]
                            and summary["slip_median_m_s"] is not None and summary["slip_median_m_s"] < GATES["slip_median_max"]
-                           and summary["tracking_rms_m_s"] < GATES["tracking_rms_max"]
-                           and summary["torque_limit_frac"] < GATES["torque_frac_max"])
+                           and summary["tracking_rms_m_s"] is not None and summary["tracking_rms_m_s"] < GATES["tracking_rms_max"]
+                           and summary["torque_limit_frac"] is not None and summary["torque_limit_frac"] < GATES["torque_frac_max"])
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({"summary": summary, "per_seed": results}, indent=1), encoding="utf-8")
     print(json.dumps(summary), flush=True)

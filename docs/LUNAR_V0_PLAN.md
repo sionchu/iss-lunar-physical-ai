@@ -104,3 +104,21 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 - **OmniLRS on Isaac Sim 6.0.1:** compatibility is UNKNOWN (baseline open question §8). It is not needed for v0.
 - **Unitree G1 asset license:** unitree_ros @ 5994d4f (assets/raw/unitree_ros_5994d4f/LICENSE) is BSD-3-Clause, Unitree Robotics. Not yet recorded in a project asset audit; whether it covers the meshes in rendered media is UNKNOWN until reviewed.
 - **Training time:** UNKNOWN until P1 runs. GPU time is shared with the user's own IsaacLab jobs.
+
+## 8. After v0: footprints and dust (approved direction, not started)
+
+**Footprints: one-way terramechanics.**
+- The robot still walks on rigid physics.
+- At each foot contact, sinkage z comes from the Bekker pressure-sinkage relation p = (k_c/b + k_phi)·z^n, using the measured foot contact force and contact width b.
+- A terrain heightfield is stamped with that depth.
+- **Claim limit:** load-dependent footprints from cited soil parameters. This is not a validation of regolith physics.
+- **Candidate parameter sources** (each to be read and cited before use; no value is adopted yet):
+  - **Geotechnical ranges:** friction angle about 30–50°, cohesion about 0.1–1 kPa at the surface ("Lunar Dust: Formation, Microphysics, and Transport", https://arxiv.org/pdf/2511.08503, citing Apollo, Lunokhod and analog data).
+  - **Bekker fits for a lunar simulant:** n 0.70–1.12; k_c and k_phi depend on bulk density ("Study on the Pressure-Sinkage Relationship of Lunar Soil Simulant", https://www.scientific.net/AMR.508.241).
+  - **Effect of low gravity:** lower n, k_phi and c; no clear change in k_c or φ (Journal of Terramechanics 2015, https://www.istvs.org/publication-news/2015/6/5/effect-of-gravity-on-the-mechanical-properties-of-lunar-regolith-tested-using-a-low-gravity-simulation-device).
+  - **Recent pressure-sinkage tests:** NASA NTRS 20250003024 (https://ntrs.nasa.gov/api/citations/20250003024/downloads/SRR%202025%20Pressure%20Sinkage%20Testing%20FINAL%20Mueller.pdf).
+
+**Dust: ballistic ejecta.**
+- In vacuum at 1.62 m/s², grains kicked up at foot strike and lift-off follow drag-free parabolas.
+- Simulated as particles with a stated launch-velocity distribution, then rendered.
+- Electrostatic levitation or adhesion has no validated model here; it is not modelled, or only as a labelled illustration.

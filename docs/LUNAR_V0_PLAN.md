@@ -97,6 +97,37 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
   - Logs are in the local IsaacLab install, outside git.
 - **Deviation from section 2:** the IsaacLab G1 tasks use IsaacLab's own G1 asset (`G1_MINIMAL_CFG`, Nucleus `Robots/Unitree/G1/g1_minimal.usd`), not the project's `g1_29dof_rev_1_0` URDF. v0 results apply to that asset. Moving the policy to the project URDF needs its own task config and is deferred.
 
+## 6b. Results (2026-10-24): v0 gates NOT PASSED
+
+**Training** (Isaac Lab `Isaac-Velocity-Flat-G1-v0`, rsl_rl PPO, training seed 42, logs in the local Isaac Lab install):
+
+| Run | What | Gravity |
+| --- | --- | --- |
+| P1 | 1500 iterations | 9.81 |
+| P2 | 500 iterations fine-tuned from P1's `model_1499` | 1.62, confirmed in the run's `params/env.yaml` |
+| P3 | 1500 iterations from scratch | 1.62 |
+
+**Evaluation** (`scripts/lunar_walk_eval.py`, seeds 1000–1009; outputs/lunar_v0/*_eval.json, gitignored). Medians are over successful seeds, against the gates approved in section 5:
+
+| Policy @ gravity | Success (≥ 9/10) | Falls | Slip median (< 0.05 m/s) | Tracking RMS (< 0.15 m/s) | Torque-limit steps (< 5 %) | Energy J/m | v0 gate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| P1 Earth @ 9.81 | **10** | 0 | **0.009** | **0.130** | 39 % | 272 | FAIL (torque) |
+| P1 Earth @ 1.62 (zero-shot) | 2 | 8 seeds fell | 0.077 | 0.363 | 5.2 % | 264 | FAIL |
+| P2 lunar fine-tune @ 1.62 | **10** | 0 | 0.084 | 0.313 | **0 %** | 174 | FAIL (slip, tracking) |
+| P3 lunar scratch @ 1.62 | **10** | 0 | **0.038** | 0.244 | **1.1 %** | 152 | FAIL (tracking) |
+
+**Observations** (diagnostic, not gate changes):
+- **Torque:** P1's torque-limit steps are almost all the ankle pitch joints at their 20 N·m limit (right 20 %, left 18 % of steps).
+- **Earth policy on the Moon:** it falls without adaptation, mostly at a pelvis height just under 0.45 m, around 20 s.
+- **Energy:** both lunar policies finish every seed and use 36–44 % less energy per metre than P1 on Earth.
+- **Tracking:** the error is measured against the waypoint follower's commands, which include stops and turns. The gates were fixed before evaluation and are not changed.
+- **L1 (fine-tune vs scratch):** after 500 fine-tune iterations, fine-tuning did not beat training from scratch on slip or tracking. Only one training seed per arm was run, so this is not a conclusion.
+
+**Next (policy work only; the gates stay fixed):**
+- train longer or with more weight on velocity tracking at 1.62 m/s²;
+- add training seeds;
+- re-evaluate on the same 10 evaluation seeds.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

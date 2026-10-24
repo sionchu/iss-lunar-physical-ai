@@ -79,6 +79,7 @@ def run_seed(seed, env_cfg, agent_cfg):
     k, stop_left, t = 0, None, 0.0
     slip, track_err, torque_hits, steps, energy, dist = [], [], 0, 0, 0.0, 0.0
     joint_hits = np.zeros(len(lim), int)
+    jnames = list(robot.joint_names)            # read before env.close(): the view is gone afterwards
     fall, reached, prev = None, 0, p0.copy()
     while t < args.time_limit and k < len(wps):
         pos = T(robot.data.root_pos_w)[0, :2].cpu().numpy()
@@ -138,7 +139,7 @@ def run_seed(seed, env_cfg, agent_cfg):
             "slip_median_m_s": round(float(np.median(slip)), 4) if slip else None,
             "tracking_rms_m_s": round(float(np.sqrt(np.mean(np.square(track_err)))), 4) if track_err else None,
             "torque_limit_frac": round(torque_hits / max(steps, 1), 4),
-            "torque_limit_by_joint": {robot.joint_names[j]: {"frac": round(int(joint_hits[j]) / max(steps, 1), 4),
+            "torque_limit_by_joint": {jnames[j]: {"frac": round(int(joint_hits[j]) / max(steps, 1), 4),
                                                             "effort_limit": round(float(lim[j]), 2)}
                                       for j in np.argsort(-joint_hits)[:6] if joint_hits[j] > 0},
             "energy_J_per_m": round(energy / max(dist, 1e-6), 2), "distance_m": round(dist, 2)}

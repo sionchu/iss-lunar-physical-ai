@@ -104,10 +104,14 @@ def main():
     comp = ACT / "iss_gravity_comparison.mp4"
     if comp.exists():
         clip("gravity", comp, "같은 모듈·같은 제어기, 중력만 0 → 9.81 m/s²: 지구 중력에선 첫 손잡이부터 실패", max_s=30.0, top=True)
+    lunar = ROOT / "outputs" / "lunar_v0" / "lunar_footprints.mp4"
+    if lunar.exists():
+        card("to_moon", "다음 무대: 달\n\n같은 G1 · 달 중력 1.62 m/s²에서 Isaac Lab으로 학습한 보행", 4)
+        clip("lunar", lunar, "달 중력에서 학습한 보행(시뮬레이션 기록) · 발자국과 먼지는 시각 효과")   # the clip has its own top overlay
     card("end", "정리\n\n"
-         f"main {steps(sm)} · JEM {steps(sj)} · Node3 {steps(sn)}{args.node3_note} (접촉 ON)\n"
+         f"ISS: main {steps(sm)} · JEM {steps(sj)} · Node3 {steps(sn)}{args.node3_note} (접촉 ON)\n"
          "손잡이 일부는 공개 배치도가 없어 가상(PLACEHOLDER) · 파지는 스크립트 고정 조인트\n\n"
-         "다음: 같은 실험 틀로 달 표면 1/6 g 보행 (Lunar v0)", 6)
+         "달: 보행 정책 학습 · 승인 기준(v0)은 아직 미통과, 원인 진단 완료", 6)
 
     inputs, graphs, idx = [], [], 0
     for k, (name, srcs, g, secs) in enumerate(segs):

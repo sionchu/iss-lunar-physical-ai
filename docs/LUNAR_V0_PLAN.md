@@ -143,6 +143,27 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 - **Likely cause:** the instantaneous base velocity oscillating within each low-gravity stride, which an instantaneous RMS counts as error. This is UNKNOWN until velocity time series are recorded.
 - The gate stays as approved. Any stride-averaged metric would be an extra, separately reported diagnostic, added only with the owner's agreement.
 
+### Tracking diagnosis (2026-10-25)
+
+**Method:**
+- `lunar_walk_eval.py --timeseries` re-ran P1 at 9.81 and P3 at 1.62 on evaluation seeds 1000 and 1001 (outputs/lunar_v0/diag_*_ts.json).
+- `scripts/lunar_tracking_diag.py` splits the gate's RMS into:
+  - steady walking: command at least 0.75 m/s, no turning, for 1.5 s;
+  - transitions: stops, starts and turns.
+- Within steady walking it further separates the slow error (1 s average) from the within-stride oscillation.
+
+| Run | Gate RMS | Steady RMS | Transition RMS | Steady slow error | Within-stride oscillation (fwd / lat) | Stride period |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| P1 Earth @ 9.81 | 0.12–0.13 | 0.06 | 0.16–0.17 | 0.05 | 0.014 / 0.028 | 0.46 s |
+| P3 Moon @ 1.62 | 0.23–0.24 | 0.065 | 0.30–0.32 | 0.06 | 0.020 / 0.017 | 0.36 s |
+
+- **Hypothesis rejected:** within-stride oscillation is small (≤ 0.03 m/s) on both bodies, so it is not what drives the error.
+- **Steady walking is the same on Earth and Moon:** RMS about 0.06, about 0.05 m/s slower than commanded.
+- **The lunar excess is entirely in transitions:** 0.30–0.32 vs 0.16–0.17. The waypoint follower changes the command as a step (for example 0.8 → 0 m/s at the stop), and the lunar policy takes longer to reach it.
+- **Physical explanation (consistent but not shown):** traction-limited horizontal acceleration scales with gravity, about μ·g, so changes in speed take longer at 1.62 m/s².
+- **Conclusion:** the tracking gate is measuring the evaluation's step command profile at lunar gravity, not gait quality.
+- The gate is unchanged. Changing the command profile (for example, acceleration-limited commands applied identically on Earth and the Moon) would change the evaluation protocol, and needs the owner's approval before any re-evaluation.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

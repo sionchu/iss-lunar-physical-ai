@@ -26,6 +26,8 @@ parser.add_argument("--gravity", type=float, default=1.62)
 parser.add_argument("--seeds", type=int, nargs="+", default=list(range(1000, 1010)))
 parser.add_argument("--time-limit", type=float, default=90.0)
 parser.add_argument("--out", type=Path, required=True)
+parser.add_argument("--timeseries", action="store_true",
+                    help="diagnostic: store per-step command, measured base velocity and foot contacts")
 ISAACLAB = Path(r"C:\dev\IsaacLab")
 sys.path.insert(0, str(ISAACLAB / "scripts" / "reinforcement_learning" / "rsl_rl"))
 from isaaclab_tasks.utils import add_launcher_args  # noqa: E402
@@ -78,6 +80,7 @@ def run_seed(seed, env_cfg, agent_cfg):
     wps = [(p0 + R0 @ np.array([x, y]), stop) for x, y, stop in COURSE]
     k, stop_left, t = 0, None, 0.0
     slip, track_err, torque_hits, steps, energy, dist = [], [], 0, 0, 0.0, 0.0
+    ts = [] if args.timeseries else None
     joint_hits = np.zeros(len(lim), int)
     jnames = list(robot.joint_names)            # read before env.close(): the view is gone afterwards
     fall, reached, prev = None, 0, p0.copy()
@@ -120,6 +123,9 @@ def run_seed(seed, env_cfg, agent_cfg):
             break
         vb = T(robot.data.root_lin_vel_b)[0, :2].cpu().numpy()
         track_err.append(float(np.linalg.norm(vb - np.array([vx, 0.0]))))
+        if ts is not None:
+            ts.append([round(t, 4), vx, wz, round(float(vb[0]), 4), round(float(vb[1]), 4)]
+                      + [int(c > 1.0) for c in T(contact.data.net_forces_w)[0, feet_c, 2].abs().cpu().numpy()])
         fz = T(contact.data.net_forces_w)[0, feet_c, 2].abs().cpu().numpy()
         fv = T(robot.data.body_lin_vel_w)[0, feet, :2].cpu().numpy()
         for c, v in zip(fz, fv):
@@ -135,7 +141,9 @@ def run_seed(seed, env_cfg, agent_cfg):
         prev = pos.copy()
     env.close()
     success = fall is None and k >= len(wps)
-    return {"seed": seed, "success": success, "waypoints_reached": reached, "fall": fall, "sim_time_s": round(t, 2),
+    return {**({"timeseries": {"cols": ["t", "cmd_vx", "cmd_wz", "vb_x", "vb_y", "contact_l", "contact_r"],
+                               "rows": ts}} if ts is not None else {}),
+            "seed": seed, "success": success, "waypoints_reached": reached, "fall": fall, "sim_time_s": round(t, 2),
             "slip_median_m_s": round(float(np.median(slip)), 4) if slip else None,
             "tracking_rms_m_s": round(float(np.sqrt(np.mean(np.square(track_err)))), 4) if track_err else None,
             "torque_limit_frac": round(torque_hits / max(steps, 1), 4),

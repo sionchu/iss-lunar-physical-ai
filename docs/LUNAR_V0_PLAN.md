@@ -164,6 +164,21 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 - **Conclusion:** the tracking gate is measuring the evaluation's step command profile at lunar gravity, not gait quality.
 - The gate is unchanged. Changing the command profile (for example, acceleration-limited commands applied identically on Earth and the Moon) would change the evaluation protocol, and needs the owner's approval before any re-evaluation.
 
+### Closing shot: bootprints (2026-10-25, visual)
+
+**Decision.** The owner asked for an Armstrong-style footprint shot rather than a regolith model, so the Bekker route in section 8 is not used for this shot. Lunar v0 stays FAIL per section 6b and the tracking diagnosis.
+
+**Source of the motion.**
+- `lunar_walk_eval.py --record` stored the P3 policy walking the course at 1.62 m/s² on evaluation seed 1000: 22.6 s, no fall, 120 touchdowns.
+- `render_lunar_footprints.py` replays that walk on Isaac Lab's G1 USD.
+
+**Visual effects** (the caption says so):
+- **Bootprints:** stamped at each recorded touchdown into a 1.5 cm heightfield. Illustrative shape: rounded rectangle 0.24 × 0.10 m, 2.2 cm deep, with treads and a rim.
+- **Dust:** grains in drag-free parabolas at 1.62 m/s²; the launch speeds are assumed.
+- **Lighting:** low Sun, black sky.
+
+**Output:** outputs/lunar_v0/lunar_footprints.mp4, 27.6 s, 1280×720.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

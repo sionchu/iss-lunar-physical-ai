@@ -64,7 +64,7 @@ def add_g1_self_colliders(stage, g1, env_collision_path):
     a convex hull of its visual mesh, which touches G1 links only (filtered against env_collision_path: the scripted
     grasp places the hand on the rail) and not its own wrist chain (the hull overlaps it by construction). Two pairs
     two joints apart overlap by design and otherwise stay in permanent contact (a stiff wrist stalled main step 4 in
-    sc1_main): wrist_yaw|wrist_roll and pelvis_contour|hip_pitch. Filters are applied on the leaf-side body and only
+    sc1_main): wrist_yaw|wrist_roll and pelvis_contour|hip_pitch; shoulder_roll|torso is filtered per collider. Filters are applied on the leaf-side body and only
     to same-limb targets: a FilteredPairsAPI on a body acted on its whole USD subtree (filters on pelvis/waist or on a
     shoulder against its head sibling switched off every arm-torso and hand-head contact, run sc_test8 vs sc_test7).
     Pelvis and waist_yaw_link get hull colliders as well, in a collision group (see below). Mass is unchanged
@@ -96,6 +96,28 @@ def add_g1_self_colliders(stage, g1, env_collision_path):
             bodies[f"{side}_wrist_roll_link"].GetPath())
         UsdPhysics.FilteredPairsAPI.Apply(bodies["pelvis_contour_link"]).GetFilteredPairsRel().AddTarget(
             bodies[f"{side}_hip_pitch_link"].GetPath())
+    # shoulder_roll's URDF collider is a 3 cm cylinder at the joint housing, inside the torso shell whenever the arm
+    # moves inward (19k contacts held the right arm stiff in sc3_jem step 4; cuRobo ignores the pair as well):
+    # filtered collider-to-collider, so the filter cannot spread over the arm subtree
+    torso = bodies["torso_link"]
+    tsub = [o for o in bodies.values() if o != torso and o.GetPath().HasPrefix(torso.GetPath())]
+    for c in torso.GetChildren():
+        if c.IsInstance() and not any(c.GetPath().HasPrefix(o.GetPath()) for o in tsub):
+            c.SetInstanceable(False)
+    torso_cols = [m.GetPath() for m in Usd.PrimRange(torso) if m.HasAPI(UsdPhysics.CollisionAPI)
+                  and not any(m.GetPath().HasPrefix(o.GetPath()) for o in tsub)]
+    roll_cols = []
+    for side in ("left", "right"):
+        roll = bodies[f"{side}_shoulder_roll_link"]
+        rsub = [o for o in bodies.values() if o != roll and o.GetPath().HasPrefix(roll.GetPath())]
+        for m in Usd.PrimRange(roll):
+            if m.HasAPI(UsdPhysics.CollisionAPI) and not any(m.GetPath().HasPrefix(o.GetPath()) for o in rsub):
+                fr = UsdPhysics.FilteredPairsAPI.Apply(m).GetFilteredPairsRel()
+                for t in torso_cols:
+                    fr.AddTarget(t)
+                roll_cols.append(m.GetPath())
+    if not torso_cols or len(roll_cols) < 2:
+        raise RuntimeError(f"shoulder/torso collider prims not found: {roll_cols}, {torso_cols}")
     # pelvis and waist_yaw_link have visual meshes only too (a wrist then sank into the waist, sc_test9): convex hulls
     # of those, in a collision group that ignores the legs, the torso (and head, logo) and the ISS but not the arms;
     # groups act on the listed colliders, the torso include excludes both arm subtrees

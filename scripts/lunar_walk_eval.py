@@ -26,6 +26,8 @@ parser.add_argument("--gravity", type=float, default=1.62)
 parser.add_argument("--seeds", type=int, nargs="+", default=list(range(1000, 1010)))
 parser.add_argument("--time-limit", type=float, default=90.0)
 parser.add_argument("--out", type=Path, required=True)
+parser.add_argument("--record", action="store_true",
+                    help="store all body world poses (wxyz) and foot contacts per policy step, for rendering")
 parser.add_argument("--timeseries", action="store_true",
                     help="diagnostic: store per-step command, measured base velocity and foot contacts")
 ISAACLAB = Path(r"C:\dev\IsaacLab")
@@ -81,6 +83,8 @@ def run_seed(seed, env_cfg, agent_cfg):
     k, stop_left, t = 0, None, 0.0
     slip, track_err, torque_hits, steps, energy, dist = [], [], 0, 0, 0.0, 0.0
     ts = [] if args.timeseries else None
+    rec = {"body_names": list(robot.body_names), "feet": [robot.body_names[i] for i in feet], "dt": dt,
+           "t": [], "pos": [], "quat_wxyz": [], "contact": []} if args.record else None
     joint_hits = np.zeros(len(lim), int)
     jnames = list(robot.joint_names)            # read before env.close(): the view is gone afterwards
     fall, reached, prev = None, 0, p0.copy()
@@ -123,6 +127,12 @@ def run_seed(seed, env_cfg, agent_cfg):
             break
         vb = T(robot.data.root_lin_vel_b)[0, :2].cpu().numpy()
         track_err.append(float(np.linalg.norm(vb - np.array([vx, 0.0]))))
+        if rec is not None:
+            q = T(robot.data.body_quat_w)[0].cpu().numpy()                     # Isaac Lab 3: (x, y, z, w)
+            rec["t"].append(round(t, 4))
+            rec["pos"].append(T(robot.data.body_pos_w)[0].cpu().numpy().round(5).tolist())
+            rec["quat_wxyz"].append(np.c_[q[:, 3], q[:, :3]].round(6).tolist())
+            rec["contact"].append([int(c > 1.0) for c in T(contact.data.net_forces_w)[0, feet_c, 2].abs().cpu().numpy()])
         if ts is not None:
             ts.append([round(t, 4), vx, wz, round(float(vb[0]), 4), round(float(vb[1]), 4)]
                       + [int(c > 1.0) for c in T(contact.data.net_forces_w)[0, feet_c, 2].abs().cpu().numpy()])
@@ -141,7 +151,7 @@ def run_seed(seed, env_cfg, agent_cfg):
         prev = pos.copy()
     env.close()
     success = fall is None and k >= len(wps)
-    return {**({"timeseries": {"cols": ["t", "cmd_vx", "cmd_wz", "vb_x", "vb_y", "contact_l", "contact_r"],
+    return {**({"record": rec} if rec is not None else {}), **({"timeseries": {"cols": ["t", "cmd_vx", "cmd_wz", "vb_x", "vb_y", "contact_l", "contact_r"],
                                "rows": ts}} if ts is not None else {}),
             "seed": seed, "success": success, "waypoints_reached": reached, "fall": fall, "sim_time_s": round(t, 2),
             "slip_median_m_s": round(float(np.median(slip)), 4) if slip else None,

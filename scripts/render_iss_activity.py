@@ -26,6 +26,9 @@ ap.add_argument("--out", type=Path, help="output mp4 (default: outputs/iss_activ
 ap.add_argument("--subframes", type=int, default=16)
 ap.add_argument("--width", type=int, default=1280)
 ap.add_argument("--height", type=int, default=720)
+ap.add_argument("--focus", help="diagnostic: camera ~0.5 m from this link (record link name), looking at it")
+ap.add_argument("--focus-offset", type=float, nargs=3, default=(0.0, 0.0, 0.0), help="point in the link frame")
+ap.add_argument("--focus-eye", type=float, nargs=3, default=(-0.3, -0.35, 0.15), help="eye offset from that point (scene)")
 ap.add_argument("--clean", action="store_true",
                 help="no burned-in overlay; write <out>_frames.json (t, step, captures, phase per frame) for an editor")
 args = ap.parse_args()
@@ -202,7 +205,13 @@ for i in range(0, len(FR["t"]), args.every):
     if not args.start_s <= FR["t"][i] <= args.end_s:
         continue
     apply_frame(i)
-    if REC.get("demo"):       # demos: oblique view from behind-left of the action, following the pelvis slowly
+    if args.focus:
+        li = [q.split("/")[-1] for q in PATHS].index(args.focus)
+        fq = FR["poses"][i][1][li]
+        fp = np.asarray(FR["poses"][i][0][li]) + np.asarray(
+            Gf.Rotation(Gf.Quatd(*fq)).TransformDir(Gf.Vec3d(*args.focus_offset)))
+        look, eye = fp, fp + np.asarray(args.focus_eye)
+    elif REC.get("demo"):     # demos: oblique view from behind-left of the action, following the pelvis slowly
         look = smooth[0] + np.array([0.55, 0.0, 0.25]) + 0.5 * (smooth[i] - smooth[0])
         eye = np.array([look[0] - 1.15, pel[0, 1] - 0.6, -4.55])
     else:

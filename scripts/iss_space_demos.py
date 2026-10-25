@@ -33,6 +33,9 @@ ap.add_argument("--demo", choices=["handoff", "pushoff"], required=True)
 ap.add_argument("--from-run", default="fin_main_0g_v2")
 ap.add_argument("--step", type=int, default=9, help="start from the state just after this step's capture")
 ap.add_argument("--seconds", type=float, default=40.0)
+ap.add_argument("--tag", help="output prefix (default: the demo name)")
+ap.add_argument("--self-collision", action="store_true",
+                help="G1 self-collision ON (with iss_physics_common.add_g1_self_colliders); off up to commit 8206c91")
 args = ap.parse_args()
 app = SimulationApp({"headless": True})
 
@@ -84,14 +87,17 @@ def main():
         mgr.set_extension_enabled_immediate("isaacsim.robot.schema", True)
         icfg = URDFImporterConfig()
         icfg.urdf_path = str(C.G1_URDF)
-        icfg.usd_path = str(OUT / f"{args.demo}_run_g1")
+        icfg.usd_path = str(OUT / f"{args.tag or args.demo}_run_g1")
         icfg.fix_base = False
         g1_usd = URDFImporter(icfg).import_urdf()
         ctx = omni.usd.get_context()
         if not ctx.open_stage(str(SCENE)):
             raise RuntimeError("cannot open scene")
         stage = ctx.get_stage()
-        stage.DefinePrim(G1_PATH, "Xform").GetReferences().AddReference(str(g1_usd))
+        g1 = stage.DefinePrim(G1_PATH, "Xform")
+        g1.GetReferences().AddReference(str(g1_usd))
+        if args.self_collision:
+            rec["added_colliders"] = C.add_g1_self_colliders(stage, g1, "/World/Environment/ISS/Collision")
 
         extras = {}            # rigid bodies replayed by the renderer: name -> {path, kind, ...}
         tool = None
@@ -148,7 +154,8 @@ def main():
         api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
         api.CreateSolverPositionIterationCountAttr(phys["position_iterations"])
         api.CreateSolverVelocityIterationCountAttr(phys["velocity_iterations"])
-        api.CreateEnabledSelfCollisionsAttr(False)
+        api.CreateEnabledSelfCollisionsAttr(args.self_collision)
+        rec["self_collision"] = args.self_collision
         api.CreateSleepThresholdAttr(0.0)
         for p in stage.Traverse():
             if p.HasAPI(UsdPhysics.RigidBodyAPI):
@@ -416,12 +423,12 @@ def main():
         rec["error"] = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
     finally:
-        out = OUT / f"{args.demo}_run.json"
+        out = OUT / f"{args.tag or args.demo}_run.json"
         out.write_text(json.dumps(rec) + "\n", encoding="utf-8")
         summ = {k: rec.get(k) for k in ("demo", "error", "catch", "release", "astrobee_arrival_t_s", "release_t_s",
                                         "momentum_conservation", "sim_time_s")}
         summ["contact_events"] = sum((rec.get("contacts") or {}).values())
-        (OUT / f"{args.demo}_summary.json").write_text(json.dumps(summ, indent=1), encoding="utf-8")
+        (OUT / f"{args.tag or args.demo}_summary.json").write_text(json.dumps(summ, indent=1), encoding="utf-8")
         print(json.dumps(summ), flush=True)
         app.close()
 

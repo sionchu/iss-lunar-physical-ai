@@ -179,6 +179,29 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 
 **Output:** outputs/lunar_v0/lunar_footprints.mp4, 27.6 s, 1280×720.
 
+### Longer-stride retraining (2026-10-25, owner: the lunar walk looks timid)
+
+**Measured gait of P3** (seed 1000 record, 2–12 s):
+- Stride period about 0.37 s per foot.
+- Stride length 0.28 m, so each step is about 0.14 m.
+- Single-foot air time 0.22–0.26 s.
+- Speed 0.76 m/s.
+
+**Change:** only the air-time reward (`feet_air_time_positive_biped`, single stance, clamped at its threshold). Everything else as P3: from scratch at 1.62 m/s², 1500 iterations, training seed 42. The overrides are confirmed in each run's `params/env.yaml`.
+
+| Run | Air-time threshold / weight | Gait, seed 1000 (period / stride / air time) | Course evaluation (10 seeds) |
+| --- | --- | --- | --- |
+| P3 (reference) | 0.4 s / 0.75 | 0.37 s / 0.28 m / 0.24 s | 10/10, slip 0.038, tracking 0.244, torque 1.1 % → FAIL (tracking) |
+| P5 | 0.8 s / 1.5 | 0.41 s / 0.27 m / 0.30 s | 10/10, 0 falls, slip 0.068, tracking 0.249, torque 1.2 %, 254 J/m → FAIL (slip, tracking) |
+| P6 | 1.0 s / 4.0 | one foot never touches down (degenerate; stride 0.63 m on the other) | seed 1000 not completed in 90 s; full evaluation NOT_RUN |
+| P7 (checkpoint 1300 of 1500) | 0.7 s / 2.5 | 0.86 / 0.66 s, 0.52 / 0.40 m, 0.61 / 0.36 s (left / right, asymmetric) | 10/10, 0 falls, slip 0.079, tracking 0.337, torque 1.9 %, 121 J/m → FAIL (slip, tracking) |
+
+- P5 barely changed the gait.
+- P6 exploited the reward: it keeps single stance by never putting one foot down.
+- P7 does lengthen the stride (0.40–0.52 m against 0.27 m), with the lowest energy per metre so far. The cost is worse tracking and slip, and an asymmetric gait.
+- P7 training stopped at iteration 1300 of 1500, when the session's jobs ended on 2026-10-25 22:43; checkpoint 1300 is used as is.
+- The gates are unchanged.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

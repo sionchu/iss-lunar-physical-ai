@@ -57,6 +57,74 @@ def add_g1(stage, g1_usd, translate):
     return prim
 
 
+def add_g1_self_colliders(stage, g1, env_collision_path):
+    """Collision setup for G1 runs with self-collision on.
+
+    The URDF gives the rubber hands no collision shape, so a hand could sink into the head or torso: each hand gets
+    a convex hull of its visual mesh, which touches G1 links only (filtered against env_collision_path: the scripted
+    grasp places the hand on the rail) and not its own wrist chain (the hull overlaps it by construction). Two pairs
+    two joints apart overlap by design and otherwise stay in permanent contact (a stiff wrist stalled main step 4 in
+    sc1_main): wrist_yaw|wrist_roll and pelvis_contour|hip_pitch. Filters are applied on the leaf-side body and only
+    to same-limb targets: a FilteredPairsAPI on a body acted on its whole USD subtree (filters on pelvis/waist or on a
+    shoulder against its head sibling switched off every arm-torso and hand-head contact, run sc_test8 vs sc_test7).
+    Pelvis and waist_yaw_link get hull colliders as well, in a collision group (see below). Mass is unchanged
+    (explicit URDF inertials). Returns the collider mesh paths.
+    """
+    from pxr import Usd
+    hg = UsdPhysics.CollisionGroup.Define(stage, "/World/CollisionGroups/G1Hands")
+    ig = UsdPhysics.CollisionGroup.Define(stage, "/World/CollisionGroups/EnvForG1Hands")
+    ig.GetCollidersCollectionAPI().CreateIncludesRel().AddTarget(env_collision_path)
+    hg.CreateFilteredGroupsRel().SetTargets([ig.GetPath()])
+    bodies = {p.GetName(): p for p in Usd.PrimRange(g1) if p.HasAPI(UsdPhysics.RigidBodyAPI)}
+    added = []
+    for side in ("left", "right"):
+        p = bodies[f"{side}_rubber_hand"]
+        p.SetInstanceable(False)
+        for c in p.GetChildren():                      # the visual meshes sit in instanced children
+            if c.IsInstance():
+                c.SetInstanceable(False)
+        for m in Usd.PrimRange(p):
+            if m.IsA(UsdGeom.Mesh):
+                UsdPhysics.CollisionAPI.Apply(m)
+                UsdPhysics.MeshCollisionAPI.Apply(m).CreateApproximationAttr("convexHull")
+                hg.GetCollidersCollectionAPI().CreateIncludesRel().AddTarget(m.GetPath())
+                added.append(str(m.GetPath()))
+        fp = UsdPhysics.FilteredPairsAPI.Apply(p)
+        for n in ("wrist_yaw", "wrist_pitch", "wrist_roll", "elbow"):
+            fp.GetFilteredPairsRel().AddTarget(bodies[f"{side}_{n}_link"].GetPath())
+        UsdPhysics.FilteredPairsAPI.Apply(bodies[f"{side}_wrist_yaw_link"]).GetFilteredPairsRel().AddTarget(
+            bodies[f"{side}_wrist_roll_link"].GetPath())
+        UsdPhysics.FilteredPairsAPI.Apply(bodies["pelvis_contour_link"]).GetFilteredPairsRel().AddTarget(
+            bodies[f"{side}_hip_pitch_link"].GetPath())
+    # pelvis and waist_yaw_link have visual meshes only too (a wrist then sank into the waist, sc_test9): convex hulls
+    # of those, in a collision group that ignores the legs, the torso (and head, logo) and the ISS but not the arms;
+    # groups act on the listed colliders, the torso include excludes both arm subtrees
+    cg = UsdPhysics.CollisionGroup.Define(stage, "/World/CollisionGroups/G1Core")
+    ng = UsdPhysics.CollisionGroup.Define(stage, "/World/CollisionGroups/G1NonArm")
+    inc = ng.GetCollidersCollectionAPI()
+    for n in ("pelvis_contour_link", "left_hip_pitch_link", "right_hip_pitch_link", "torso_link"):
+        inc.CreateIncludesRel().AddTarget(bodies[n].GetPath())
+    for side in ("left", "right"):
+        inc.CreateExcludesRel().AddTarget(bodies[f"{side}_shoulder_pitch_link"].GetPath())
+    cg.CreateFilteredGroupsRel().SetTargets([ng.GetPath(), ig.GetPath()])
+    n_hands = len(added)
+    for name in ("pelvis", "waist_yaw_link"):
+        p = bodies[name]
+        sub = [o for o in bodies.values() if o != p and o.GetPath().HasPrefix(p.GetPath())]
+        for c in p.GetChildren():
+            if c.IsInstance() and not any(c.GetPath().HasPrefix(o.GetPath()) for o in sub):
+                c.SetInstanceable(False)
+        for m in Usd.PrimRange(p):
+            if m.IsA(UsdGeom.Mesh) and not any(m.GetPath().HasPrefix(o.GetPath()) for o in sub):
+                UsdPhysics.CollisionAPI.Apply(m)
+                UsdPhysics.MeshCollisionAPI.Apply(m).CreateApproximationAttr("convexHull")
+                cg.GetCollidersCollectionAPI().CreateIncludesRel().AddTarget(m.GetPath())
+                added.append(str(m.GetPath()))
+    if n_hands < 2 or len(added) < 4:
+        raise RuntimeError(f"collider meshes not found: {added}")
+    return added
+
+
 def add_collision_groups(stage):
     """G1 is filtered against the environment proxies: no contacts anywhere (gate condition)."""
     env = UsdPhysics.CollisionGroup.Define(stage, "/World/CollisionGroups/Env")

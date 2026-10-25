@@ -60,6 +60,8 @@ def main():
     ap.add_argument("--hand-servo", action="store_true", help="closed-loop free-hand correction after each move")
     ap.add_argument("--gravity", type=float, default=0.0, help="scene gravity magnitude (m/s^2, -z); 9.81 = ground")
     ap.add_argument("--max-steps", type=int, help="stop after this many steps (ablations)")
+    ap.add_argument("--self-collision", action="store_true",
+                    help="G1 self-collision ON in the planner and in PhysX (off up to commit 8206c91)")
     ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
                     help="traj_step: cuRobo trajectory optimisation with the held hand constrained along the path "
                          "(default); step: chained IK waypoints")
@@ -78,7 +80,8 @@ def main():
 
     log = open(OUT / "planner_service.log", "w", encoding="utf-8")
     srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port), "--frame-offset",
-                            *map(str, route["frame_offset_m"])], cwd=ROOT,
+                            *map(str, route["frame_offset_m"]), *(["--self-collision"] if args.self_collision else [])],
+                           cwd=ROOT,
                            stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
     check = None
     try:
@@ -100,7 +103,8 @@ def main():
                                     if rail_b is not None else None),
                           "route": args.route, "max_steps": args.max_steps,
                           **CONTROL, "gains": args.gains, "hold_s": args.hold_s,
-                          "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "gravity_m_s2": args.gravity, "time_scale": args.time_scale}}
+                          "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "gravity_m_s2": args.gravity, "time_scale": args.time_scale,
+                          "self_collision": args.self_collision}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
         cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
                f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))
@@ -114,7 +118,8 @@ def main():
         srv.terminate()
         log.close()
     segs = run.get("segments", [])
-    summary = {"route": args.route, "control": run.get("control"), "error": run.get("error"), "completed_steps": run.get("completed_steps"),
+    summary = {"route": args.route, "control": run.get("control"), "self_collision": run.get("self_collision"),
+               "error": run.get("error"), "completed_steps": run.get("completed_steps"),
                "total_steps": run.get("total_steps"), "sim_time_s": run.get("sim_time_s"),
                "last_pelvis_pos": next((s["pelvis_pos"] for s in reversed(segs) if s.get("pelvis_pos")), None),
                "capture_error_m": [round(s["hand_to_anchor_at_capture_m"], 4) for s in segs],

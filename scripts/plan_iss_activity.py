@@ -10,7 +10,8 @@ asset (verified by URDF diff; cuRobo adds base_link and differs only in the mid3
 Modes: start (anchored start pose), step (one hand-over-hand step from a measured state), chain (open-loop preview
 of the whole route), reach (anchored free-hand reach), check (post-hoc interference of a recorded run).
 cuRobo is a kinematic planner: dynamics and all verdicts come from the Isaac PhysX run. G1 self-collision is not
-checked (cuRobo's G1 sphere model self-collides at q = 0; Isaac also runs without self-collision).
+checked by default (cuRobo's shipped G1 sphere model overlaps at rest); --self-collision turns the check on with
+the rest-pose overlaps resolved in robot_cfg() (see SELF_IGNORE / SELF_BUFFER), for runs with PhysX self-collision on.
 """
 import argparse
 import json
@@ -77,10 +78,25 @@ LEG_TUCK = {f"{s}_{j}_joint": v for s in ("left", "right")
                          ("ankle_pitch", -0.6), ("ankle_roll", 0.0))}
 
 
+# Rest-pose (actuated 0, legs tucked) overlaps of the shipped sphere model, from scripts/g1_self_collision.py:
+# shoulder_roll|torso 6 mm and wrist_roll|wrist_yaw (one compact wrist, two joints apart) are proxy artefacts of
+# links that sit against each other by construction, so they are ignored; shoulder_yaw|torso (7 mm at rest) can
+# really collide when the arm adducts, so its spheres shrink by 1 cm for self-collision instead of being ignored.
+SELF_IGNORE = {f"{s}_{a}": [f"{s}_{b}" if b.startswith("wrist") else b] for s in ("left", "right")
+               for a, b in (("shoulder_roll_link", "torso_link"), ("wrist_roll_link", "wrist_yaw_link"))}
+SELF_BUFFER = {f"{s}_shoulder_yaw_link": -0.01 for s in ("left", "right")}
+SELF_COLLISION = False   # --self-collision
+
+
 def robot_cfg():
     cfg = yaml.safe_load(open(files("curobo") / "content" / "configs" / "robot" / "unitree_g1_29dof_retarget.yml"))
-    cfg["kinematics"]["tool_frames"] = ["pelvis", HANDS["left"], HANDS["right"]]
-    cfg["kinematics"]["lock_joints"] = dict(LEG_TUCK)
+    kin = cfg["kinematics"]
+    kin["tool_frames"] = ["pelvis", HANDS["left"], HANDS["right"]]
+    kin["lock_joints"] = dict(LEG_TUCK)
+    for a, bs in SELF_IGNORE.items():
+        kin["self_collision_ignore"].setdefault(a, [])
+        kin["self_collision_ignore"][a] = sorted(set(kin["self_collision_ignore"][a]) | set(bs))
+    kin["self_collision_buffer"].update(SELF_BUFFER)
     return cfg
 
 
@@ -116,11 +132,11 @@ class Planner:
     def __init__(self, use_scene=True):
         cfg = robot_cfg()
         self.scene = scene() if use_scene else None
-        # self-collision OFF: cuRobo's G1 sphere model self-collides at q = 0 (constraint value 2.0 with the shipped
-        # retarget config); the Isaac executor also runs G1 without self-collision (gate condition). World collision ON.
+        # self-collision per SELF_COLLISION (--self-collision): off reproduces the runs up to 8206c91 (the shipped
+        # sphere model overlapped at rest and Isaac ran without self-collision); world collision always ON.
         # use_cuda_graph=False: graph replay crashed (CUDA illegal address) after the per-request tool-pose criteria
         # and seed shapes changed; graphs are only a speed optimisation
-        common = dict(robot=cfg, scene_model=self.scene, self_collision_check=False, position_tolerance=0.01,
+        common = dict(robot=cfg, scene_model=self.scene, self_collision_check=SELF_COLLISION, position_tolerance=0.01,
                       use_cuda_graph=False, optimizer_collision_activation_distance=CLEARANCE_M,
                       orientation_tolerance=3.2)
         self.ik = InverseKinematics(InverseKinematicsCfg.create(num_seeds=64, **common))
@@ -498,7 +514,7 @@ class Planner:
         from curobo.trajectory_optimizer import TrajectoryOptimizer, TrajectoryOptimizerCfg
         if not hasattr(self, "trajopt"):
             self.trajopt = TrajectoryOptimizer(TrajectoryOptimizerCfg.create(
-                robot=robot_cfg(), scene_model=self.scene, self_collision_check=False, use_cuda_graph=False,
+                robot=robot_cfg(), scene_model=self.scene, self_collision_check=SELF_COLLISION, use_cuda_graph=False,
                 optimizer_collision_activation_distance=CLEARANCE_M, num_seeds=8, position_tolerance=0.01,
                 orientation_tolerance=3.2))
         held, free = r["held_hand"], r["free_hand"]
@@ -673,10 +689,12 @@ def main():
     ap.add_argument("--serve", type=int, help="serve requests on 127.0.0.1:PORT (one JSON per line) instead")
     ap.add_argument("--frame-offset", type=float, nargs=3, metavar=("X", "Y", "Z"),
                     help="planning-frame origin in the scene frame (default OFFSET); the base prisms reach +-10 m from it")
+    ap.add_argument("--self-collision", action="store_true", help="plan with G1 self-collision (see SELF_IGNORE)")
     args = ap.parse_args()
+    global OFFSET, SELF_COLLISION
     if args.frame_offset:
-        global OFFSET
         OFFSET = np.asarray(args.frame_offset, float)
+    SELF_COLLISION = args.self_collision
     if args.serve:
         serve(args.serve, Planner(use_scene=not args.no_scene))
         return

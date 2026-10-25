@@ -19,6 +19,7 @@ constraints: nothing here validates contact, grasping or a controller.
 import argparse
 import hashlib
 import json
+import os
 import math
 import sys
 import traceback
@@ -97,6 +98,8 @@ def main():
             gg.GetCollidersCollectionAPI().CreateIncludesRel().AddTarget(G1_PATH)
             gg.CreateFilteredGroupsRel().SetTargets([env.GetPath(), gg.GetPath()])
         rec["contacts_filtered"] = bool(args.filter_contacts)
+        if spec["chain"].get("self_collision") and not os.environ.get("ISS_SELFCOL_BARE"):   # BARE: diagnosis only
+            rec["added_colliders"] = C.add_g1_self_colliders(stage, g1, "/World/Environment/ISS/Collision")
         rec["posture_gains"] = list(spec_gains[0])
         for _ in range(10):
             app.update()
@@ -118,7 +121,9 @@ def main():
         api = PhysxSchema.PhysxArticulationAPI.Apply(stage.GetPrimAtPath(roots[0]))
         api.CreateSolverPositionIterationCountAttr(phys["position_iterations"])
         api.CreateSolverVelocityIterationCountAttr(phys["velocity_iterations"])
-        api.CreateEnabledSelfCollisionsAttr(False)
+        self_col = bool(spec["chain"].get("self_collision", False))   # off up to 8206c91; limbs could pass through
+        api.CreateEnabledSelfCollisionsAttr(self_col)
+        rec["self_collision"] = self_col
         api.CreateSleepThresholdAttr(0.0)
         for p in stage.Traverse():
             if p.HasAPI(UsdPhysics.RigidBodyAPI) and str(p.GetPath()).startswith(G1_PATH + "/"):
@@ -206,6 +211,10 @@ def main():
                 a0, a1 = (str(PhysicsSchemaTools.intToSdfPath(h.actor0)), str(PhysicsSchemaTools.intToSdfPath(h.actor1)))
                 g1_side = a0 if a0.startswith(G1_PATH) else a1
                 env_side = a1 if g1_side == a0 else a0
+                if env_side.startswith(G1_PATH):                # G1 against itself (self-collision runs)
+                    k = "|".join(sorted((a0.split("/")[-1], a1.split("/")[-1])))
+                    rec.setdefault("self_contacts", {})[k] = rec.get("self_contacts", {}).get(k, 0) + 1
+                    continue
                 if not env_side.startswith("/World/Environment"):
                     continue
                 key = f"{phase}:{g1_side.split('/')[-1]}"

@@ -128,6 +128,21 @@ Config gate (gate 1): gravity vector, dt, substeps, solver, iterations and conta
 - add training seeds;
 - re-evaluate on the same 10 evaluation seeds.
 
+### P4 retraining (2026-10-24/25): still NOT PASSED
+
+**Setup:** from scratch at 1.62 m/s², 3000 iterations, velocity-tracking reward weight 1.0 → 2.0. The override is confirmed in each run's `params/env.yaml`. Training seeds 42 and 43. Same course, same 10 evaluation seeds, same gates.
+
+| Policy @ 1.62 | Success | Slip median | Tracking RMS | Torque-limit steps | Energy J/m | v0 gate |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| P3 (reference) | 10 | 0.038 | 0.244 | 1.1 % | 152 | FAIL (tracking) |
+| P4, training seed 42 | 10 | 0.067 | 0.235 | 65 % | 206 | FAIL (slip, tracking, torque) |
+| P4, training seed 43 | 10 | 0.075 | 0.243 | 97 % | 186 | FAIL (slip, tracking, torque) |
+
+- **Tracking reward:** doubling its weight did not lower the tracking error (0.235–0.243 vs 0.244). It traded away slip and torque instead: the ankles now sit at their limit most of the time.
+- **Tracking floor:** every lunar-gravity policy so far has its per-seed tracking error between 0.22 and 0.28 m/s, while the Earth policy on Earth gets 0.13.
+- **Likely cause:** the instantaneous base velocity oscillating within each low-gravity stride, which an instantaneous RMS counts as error. This is UNKNOWN until velocity time series are recorded.
+- The gate stays as approved. Any stride-averaged metric would be an extra, separately reported diagnostic, added only with the owner's agreement.
+
 ## 7. Open items / UNKNOWN
 
 - **Fall threshold for G1 at lunar gravity:** whether 0.45 m pelvis height suits G1 at 1/6 g is UNKNOWN (bounding gaits may be lower). Calibrate on the Earth baseline before fixing it.

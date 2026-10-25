@@ -12,6 +12,7 @@ ground), replayed on Isaac Lab's G1 USD (physics disabled). Everything below is 
 - sky: black, low Sun (DistantLight, 8 deg elevation), Earth (NASA Blue Marble NG) at about 1.9 deg apparent size.
 Output: outputs/lunar_v0/lunar_footprints.mp4 (gitignored).
 
+--side: a clean side-on tracking shot of the walk (shows stride length), --start to --max-s, sidecar as --pov.
 --pov: first-person finale for the showcase (docs/SHOWCASE_STORYBOARD.md shot 10) instead of the chase shot. The
 camera rides on head_link (eye at the front of the head mesh); its orientation is the head frame low-passed with a
 zero-phase Gaussian (-3 dB at --lp-hz) so gait bob stays and jitter goes, pitched --pitch0 deg down, easing to
@@ -39,6 +40,8 @@ ap.add_argument("--max-s", type=float, default=1e9, help="stop after this many s
 ap.add_argument("--outro-s", type=float, default=5.0, help="closing footprint shot length")
 ap.add_argument("--out", type=Path, default=Path("outputs/lunar_v0/lunar_footprints.mp4"))
 ap.add_argument("--pov", action="store_true", help="first-person finale (see docstring)")
+ap.add_argument("--side", action="store_true",
+                help="clean side-on tracking shot (no text, no outro) from --start to --max-s, for the editor")
 ap.add_argument("--start", type=float, default=15.5, help="--pov: first replayed second")
 ap.add_argument("--last-td", type=float, default=17.9, help="--pov: the last step is the first touchdown after this")
 ap.add_argument("--pitch0", type=float, default=15.0)
@@ -268,7 +271,7 @@ rep.orchestrator.set_capture_on_play(False)
 
 font = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", int(22 * args.width / 1280))
 small = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", int(16 * args.width / 1280))
-fdir = ROOT / "outputs" / "lunar_v0" / ("render_frames_" + (args.out.stem if args.pov else "footprints"))
+fdir = ROOT / "outputs" / "lunar_v0" / ("render_frames_" + (args.out.stem if args.pov or args.side else "footprints"))
 shutil.rmtree(fdir, ignore_errors=True)
 fdir.mkdir(parents=True)
 
@@ -405,8 +408,9 @@ caption = [("Unitree G1 on the Moon (1.62 m/s²) · walking policy trained in Is
 dt_out = args.speed / args.fps
 t_end = min(float(T[-1]), args.max_s)
 ev_i, k = 0, 0
-t = 0.0
+t = args.start if args.side else 0.0
 smooth = np.array([POS[max(0, i - 25):i + 26, 0].mean(0) for i in range(n_steps)])
+side = []
 while t <= t_end:
     i = min(int(np.searchsorted(T, t)), n_steps - 1)
     while ev_i < len(events) and events[ev_i][0] <= t:      # footprints and dust launched since the last frame
@@ -414,15 +418,21 @@ while t <= t_end:
         ev_i += 1
     pose_scene(t, i)
     c = smooth[i]
-    look(c + np.array([-1.6, -2.0, 0.75]), c + np.array([0.3, 0.0, 0.25]))
+    if args.side:                                              # 1.9 m to the walker's left, at hip height
+        v = smooth[min(i + 25, n_steps - 1), :2] - smooth[max(i - 25, 0), :2]
+        h = v / max(np.linalg.norm(v), 1e-6)
+        look(c + np.array([-h[1] * 1.9, h[0] * 1.9, -0.05]), c + np.array([0.0, 0.0, -0.15]))
+        side.append({"t": round(t, 4)})
+    else:
+        look(c + np.array([-1.6, -2.0, 0.75]), c + np.array([0.3, 0.0, 0.25]))
     app.update()
-    frame_out(k, caption)
+    frame_out(k, [] if args.side else caption)
     k += 1
     t += dt_out
 # closing shot: the robot walks off, the camera settles low over the bootprints
 td = [e for e in events if e[2] == "down" and e[0] <= t_end]
 focus = np.mean([e[3] for e in td[len(td) // 3: len(td) // 3 + 4]], axis=0)
-n_out = int(args.outro_s * args.fps)
+n_out = 0 if args.side else int(args.outro_s * args.fps)
 for j in range(n_out):
     a = 0.5 - 0.5 * math.cos(math.pi * j / max(n_out - 1, 1))
     eye = (1 - a) * (focus + np.array([-2.0, -2.4, 1.2])) + a * (focus + np.array([-0.55, -0.45, 0.42]))
@@ -434,5 +444,8 @@ args.out.parent.mkdir(parents=True, exist_ok=True)
 out = ROOT / args.out
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(args.fps), "-i", str(fdir / "f%05d.png"),
                 "-c:v", "libx264", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], check=True)
+if args.side:
+    out.with_name(out.stem + "_frames.json").write_text(json.dumps(
+        {"rec": str(args.rec), "speed": args.speed, "fps": args.fps, "frames": side}), encoding="utf-8")
 print(json.dumps({"video": str(out), "frames": k, "touchdowns": len(td)}))
 app.close()

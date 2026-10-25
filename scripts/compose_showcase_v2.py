@@ -27,6 +27,16 @@ XF = 12 / FPS                                         # act dissolve
 BANNED = ["welcome", "let's", "imagine", "journey", "showcasing", "cutting-edge", "seamless", "powered by", "here:",
           "next stage"]
 TEXTS = []                                            # every overlay string, for the check
+# which runs a cut is built from: v2 = the 2026-10-25 cut (self-collision off, limbs could pass through the body);
+# v3 = the same storyboard from the self-collision runs (docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md, sc4)
+CUTS = {
+    "v2": dict(clips="showcase_v2", main="main_sv5", jem="jem_sv5", node3="node3_sv5", zero="fin_main_0g_v2",
+               one="fin_main_1g", handoff="handoff", pushoff="pushoff", moon="p3_moon_scratch_at_moon_eval",
+               receipt="All three routes with one code version", self_collision=False),
+    "v3": dict(clips="showcase_v3", main="sc4_main", jem="sc4_jem", node3="sc4_node3", zero="sc4_main",
+               one="sc4_main_1g", handoff="sc4_handoff", pushoff="sc4_pushoff", moon="p7_1300_at_moon_eval",
+               receipt="Self-collision on", self_collision=True),
+}
 
 
 def js(p):
@@ -119,25 +129,41 @@ def exposure_gain(stem):
     return float(np.mean([np.asarray(Image.open(p).convert("L").resize((192, 108)), float).mean() for p in pick]))
 
 
+def gate_text(ev):
+    """Caption naming the failed velocity gates of a lunar evaluation, measured value and limit."""
+    g = ev["gates"]
+    bad = []
+    if ev["tracking_rms_m_s"] >= g["tracking_rms_max"]:
+        bad.append(f"tracking {ev['tracking_rms_m_s']:.2f} m/s (limit {g['tracking_rms_max']:g})")
+    if ev["slip_median_m_s"] >= g["slip_median_max"]:
+        bad.append(f"slip {ev['slip_median_m_s']:.3f} m/s (limit {g['slip_median_max']:g})")
+    return "Walking gates not met\n" + ", ".join(bad) if bad else "Walking gates met"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out", type=Path, default=DEM / "iss_showcase_v2.mp4")
+    ap.add_argument("--cut", default="v2", choices=sorted(CUTS))
+    ap.add_argument("--out", type=Path, help="default: outputs/iss_demos/iss_showcase_<cut>.mp4")
     ap.add_argument("--preview", default="", help="comma-separated shot names: hard-cut preview of those shots only")
     args = ap.parse_args()
+    cut = CUTS[args.cut]
+    global V2
+    V2 = ROOT / "outputs" / cut["clips"]
+    args.out = args.out or DEM / f"iss_showcase_{args.cut}.mp4"
     want = set(args.preview.split(",")) if args.preview else {
-        "open", "title", "main", "jem", "node3", "handoff", "pushoff", "cupola", "gravity", "moon", "black", "final",
-        "credits"}
+        "open", "title", "main", "jem", "node3", "handoff", "pushoff", "cupola", "gravity", "moonwalk", "moon", "black",
+        "final", "credits"}
     for f in (V2 / "_txt").glob("t*.txt"):
         f.unlink()
 
-    sm, sj, sn = (js(ACT / f"{r}_summary.json") for r in ("main_sv5", "jem_sv5", "node3_sv5"))
-    sh, sp = js(DEM / "handoff_summary.json"), js(DEM / "pushoff_summary.json")
-    s1g = js(ACT / "fin_main_1g_summary.json")
-    g0 = js(ACT / "fin_main_0g_v2_run.json")["gravity_m_s2"]
-    g1 = js(ACT / "fin_main_1g_run.json")["gravity_m_s2"]
-    ev = js(LUN / "p3_moon_scratch_at_moon_eval.json")["summary"]
+    sm, sj, sn = (js(ACT / f"{cut[r]}_summary.json") for r in ("main", "jem", "node3"))
+    sh, sp = js(DEM / f"{cut['handoff']}_summary.json"), js(DEM / f"{cut['pushoff']}_summary.json")
+    s0g, s1g = js(ACT / f"{cut['zero']}_summary.json"), js(ACT / f"{cut['one']}_summary.json")
+    g0 = js(ACT / f"{cut['zero']}_run.json")["gravity_m_s2"]
+    g1 = js(ACT / f"{cut['one']}_run.json")["gravity_m_s2"]
+    ev = js(LUN / f"{cut['moon']}.json")["summary"]
     isaac = Path("C:/isaacsim/VERSION").read_text(encoding="utf-8").split("-")[0].strip()
-    commit = re.search(r"All three routes with one code version \([^)]*commit ([0-9a-f]{7})\)",
+    commit = re.search(re.escape(cut["receipt"]) + r" \([^)]*commit ([0-9a-f]{7})\)",
                        (ROOT / "docs" / "ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md").read_text(encoding="utf-8")).group(1)
     g_moon = f"{abs(ev['gravity_m_s2']):.2f}"
     mc = sp["momentum_conservation"]
@@ -159,6 +185,14 @@ def main():
 
     def add(name, inputs, body, dur):
         shots.append((name, inputs, body, dur))
+
+    def stopped(s, d):
+        """Caption + readout for a route that stopped before its last handhold (last 5 s of the shot)."""
+        if s["completed_steps"] >= s["total_steps"]:
+            return []
+        miss = s["capture_error_m"][-1] * 100
+        return [caption(f"Stopped at handhold {s['completed_steps'] + 1} of {s['total_steps']}", d - 5.0, d),
+                *readout("Hand to handhold", [(d - 5.0, d, f"{miss:.1f} cm")], d - 5.0, d, y_off=SIZE["readout"] + 30)]
 
     def clip(name, stem, dur, overlays, extra=""):
         add(name, [V2 / f"{stem}.mp4"], f"[{{i0}}:v]{src(stem, extra)},trim=duration={dur:.3f},setpts=PTS-STARTPTS,"
@@ -183,11 +217,16 @@ def main():
         z = f"(1+0.10*if(lt(t\\,{d - 6:.3f})\\,0\\,(1-cos(PI*min(1\\,(t-{d - 6:.3f})/6)))/2))"
         push = f"scale=w=ceil({W}*{z}/2)*2:h=ceil({H}*{z}/2)*2:eval=frame,crop={W}:{H},"
         reach = sm["panel_reach"]["min_distance_m"] * 100
+        tp = next(k for k, f in enumerate(js(sc)["frames"]) if f["phase"] == "panel_reach") / FPS
+        c1 = ("Hand over hand, contacts and self-collision on" if cut["self_collision"] else
+              "Hand over hand along the handholds, contacts on")
         clip("main", "c03_main", d, [label("Node 1 → US Lab → Node 2 → Columbus", 0.0, d), badge(f"{sp3:g}×", 0.0, d),
-                                     caption("Hand over hand along the handholds, contacts on", 6.0, d - 6.5),
-                                     caption("Final reach to the service panel", d - 6.0, d),
-                                     *readout("Handholds", steps(sc, sm["total_steps"], d), 0.0, d - 6.0),
-                                     *readout("Panel reach", [(d - 6.0, d, f"{reach:.1f} cm")], d - 6.0, d)], extra=push)
+                                     caption(c1, 6.0, tp - 0.3),
+                                     caption("Reach to the service panel", tp, tp + 4.0),
+                                     *readout("Handholds", steps(sc, sm["total_steps"], d), 0.0, d),
+                                     *readout("Panel reach", [(tp, tp + 4.0, f"{reach:.1f} cm")], tp, tp + 4.0,
+                                              y_off=SIZE["readout"] + 30),
+                                     *stopped(sm, d)], extra=push)
     # 4 / 5 JEM, Node 3 (last 120 s of each route, 8x)
     if {"jem", "node3"} & want:
         for name, stem, lbl, cap, s in (("jem", "c04_jem", "Node 2 → JEM", "Same controller, second route", sj),
@@ -195,18 +234,24 @@ def main():
                                          f"Three routes, commit {commit}, one run each", sn)):
             sc = V2 / f"{stem}_frames.json"
             d = frames(sc) / FPS
-            clip(name, stem, d, [label(lbl, 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d), caption(cap, 1.0, d),
-                                 *readout("Handholds", steps(sc, s["total_steps"], d), 0.0, d)])
+            end = d - 5.0 if s["completed_steps"] < s["total_steps"] else d
+            clip(name, stem, d, [label(lbl, 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d), caption(cap, 1.0, end - 0.3),
+                                 *readout("Handholds", steps(sc, s["total_steps"], d), 0.0, d), *stopped(s, d)])
     # 6 hand-off, 1x
     if "handoff" in want:
         sc = V2 / "c06_handoff_frames.json"
-        d = frames(sc) / FPS
+        d0 = frames(sc) / FPS
         t_catch = next(k for k, f in enumerate(js(sc)["frames"]) if f["t"] >= sh["catch"]["t_s"]) / FPS
+        hold = max(0.0, t_catch + 3.0 - d0)            # freeze the last frame so the catch readout holds >= 2.5 s
+        d = d0 + hold
+        spd = js(sc)["speed"]
         clip("handoff", "c06_handoff", d, [label("Tool hand-off", 0.0, d),
+                                           *([badge(f"{spd:g}×", 0.0, d0)] if spd != 1 else []),
                                            caption("Astrobee releases a tool bar. G1 catches it.", 1.0, d),
                                            *readout("Release to catch",
                                                     [(t_catch, d, f"{sh['catch']['t_s'] - sh['release']['t_s']:.1f} s")],
-                                                    t_catch, d)])
+                                                    t_catch, d)],
+             extra=f"tpad=stop_mode=clone:stop_duration={hold + 0.1:.2f}," if hold else "")
     # 7 push-off, 2x
     if "pushoff" in want:
         sc = V2 / "c07_pushoff_frames.json"
@@ -248,7 +293,7 @@ def main():
                 f"trim=duration={d:.3f},setpts=PTS-STARTPTS,"
                 + ",".join([text(f"{g0:g} g", "label", M, M, 0.0, d, box=True),
                             # one row up: the full-width caption sits on the left half's bottom line
-                        *readout("Handholds", steps(sz, s1g["total_steps"], d), 0.0, d,
+                        *readout("Handholds", steps(sz, s0g["total_steps"], d), 0.0, d,
                                  y_off=SIZE["readout"] + 30)]) + "[L]")
         miss = s1g["capture_error_m"][-1] * 100
         right = (f"[{{i1}}:v]{src('c09_one')},{half},tpad=stop_mode=clone:stop_duration={d - do + 0.1:.2f},"
@@ -261,17 +306,24 @@ def main():
         add("gravity", [V2 / "c09_zero.mp4", V2 / "c09_one.mp4"],
             left + ";" + right + ";[L][R]hstack=inputs=2,"
             + caption("Same route and controller. Only gravity changes.", 1.0, d), d)
-    # 10 lunar POV, 0.5x
+    # 10a lunar side-on walk (v3: shows the longer stride), 1x; 10 lunar POV, 0.5x
+    walk = "moonwalk" in want and (V2 / "c10_walk.mp4").exists()
+    if walk:
+        sc = V2 / "c10_walk_frames.json"
+        d = frames(sc) / FPS
+        add("moonwalk", [V2 / "c10_walk.mp4"], f"[{{i0}}:v]fps={FPS},scale={W}:{H},setsar=1,trim=duration={d:.3f},"
+            "setpts=PTS-STARTPTS," + ",".join([
+                label("Moon · learned walking policy", 0.3, d), caption(gate_text(ev), 1.0, d - 0.3),
+                *readout("g", [(0.0, d, f"{g_moon} m/s²")], 0.3, d)]), d)
     if "moon" in want:
         sc = V2 / "c10_pov_frames.json"
         pj = js(sc)
         d = frames(sc) / FPS
         add("moon", [V2 / "c10_pov.mp4"], f"[{{i0}}:v]fps={FPS},scale={W}:{H},setsar=1,trim=duration={d:.3f},"
             "setpts=PTS-STARTPTS," + ",".join([
-                label("Moon · learned walking policy", 0.5, d), badge(f"{pj['speed']:g}×", 0.0, d),
-                caption(f"Velocity tracking gate not met: {ev['tracking_rms_m_s']:.2f} m/s RMS, "
-                        f"limit {ev['gates']['tracking_rms_max']:g}", 1.0, d - 0.5),
-                *readout("g", [(0.0, d, f"{g_moon} m/s²")], 0.5, d)])
+                badge(f"{pj['speed']:g}×", 0.0, d), *readout("g", [(0.0, d, f"{g_moon} m/s²")], 0.5, d),
+                *([] if walk else [label("Moon · learned walking policy", 0.5, d),
+                                   caption(gate_text(ev), 1.0, d - 0.5)])])
             + f",fade=t=out:st={d - FADE:.3f}:d={FADE:.3f}", d)
     # 11-13 black, final card, credits
     if {"black", "final", "credits"} & want:
@@ -284,8 +336,11 @@ def main():
                    "Repeatability across runs was not measured.",
                    "Grasps are scripted constraints (fixed joints).",
                    "Some handholds and the panel anchor are placeholders.",
-                   f"Hand-off, push-off and the {g1:g} m/s² comparison start",
-                   "from an earlier controller run.",
+                   *([f"Hand-off, push-off and the {g1:g} m/s² comparison start",
+                      "from an earlier controller run."] if not cut["self_collision"] else
+                     ["Self-collision is on in planning and physics.",
+                      "Hand, pelvis and waist colliders come from visual meshes.",
+                      "Hand-off and push-off start at main-route handhold 9."]),
                    "Astrobee propulsion is a force-limited stand-in.",
                    "Earth view is rendered; the Cupola mesh is hidden.",
                    "Footprints and dust launch are rendered effects.",
@@ -326,7 +381,7 @@ def main():
         acts = [names]
     else:
         acts = [names[:names.index("node3") + 1], names[names.index("handoff"):names.index("gravity") + 1],
-                names[names.index("moon"):]]
+                names[names.index("moonwalk" if "moonwalk" in names else "moon"):]]
     act_d = []
     for a, members in enumerate(acts):
         ks = [names.index(m) for m in members]

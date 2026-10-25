@@ -200,3 +200,29 @@ The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of th
 - The cut was not watched in real time.
 - Dissolve smoothness and frame judder were not judged.
 - No audio (none planned).
+
+## v3 (2026-10-26): the same board from the self-collision runs
+
+**Why.** The owner saw arms passing through the body in v2. Every run in v2 had G1 self-collision off. The fix and its results are in `docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md`, section "Self-collision on".
+
+**Build.** `scripts/compose_showcase_v2.py --cut v3` writes `outputs/iss_demos/iss_showcase_v3.mp4` (3:01.6, gitignored). The clips are in `outputs/showcase_v3/`.
+
+**Sources.**
+- ISS shots: `sc4_main`, `sc4_jem`, `sc4_node3`, `sc4_main_1g`, `sc4_handoff`, `sc4_pushoff`.
+- Cupola: the v2 clip, unchanged.
+- Lunar shots: the P7 checkpoint-1300 record (`p7_walk_rec.json`); the caption numbers come from `p7_1300_at_moon_eval.json`.
+
+**Changes from the v2 board.**
+- **Stopped routes.** A route that stopped (main 14/36, Node 3 10/16) ends with "Stopped at handhold N of M" and the hand-to-handhold distance, taken from `capture_error_m[-1]`.
+- **Panel reach.** The readout is shown when the panel-reach phase starts, not at the end of the route.
+- **Hand-off.** Rendered at 2× (badge shown). Release to catch is now 26.0 s, so the last frame is held 1.5 s to keep the readout on screen ≥ 2.5 s.
+- **9.81 m/s² comparison.** sim 0–74.2 s at 4×. The right side reads "Miss at handhold 2 20.9 cm".
+- **New shot 10a, lunar side-on walk** (`render_lunar_footprints.py --side`, 6 s at 1×). It shows P7's longer stride, which the first-person shot cannot. It carries the label, the gate caption (two lines: tracking 0.34 m/s with limit 0.15, slip 0.079 m/s with limit 0.05) and the g readout. The first-person shot keeps the badge and the g readout.
+- **Credits.** Added: "Self-collision is on in planning and physics", "Hand, pelvis and waist colliders come from visual meshes", "Hand-off and push-off start at main-route handhold 9". The v2 line about an earlier controller run is dropped.
+
+**Checked (G4).**
+- Frames every 2 s, plus a full-resolution check of the hand-off ending.
+- Text check passed: 120 strings, no Hangul, no banned phrases, no `!`, `?` or em dash, no line over 60 characters.
+- Exposure gains 0.80–1.23.
+
+**Not checked.** The cut was not watched in real time. Whether the P7 asymmetry reads as a limp is NOT_RUN.

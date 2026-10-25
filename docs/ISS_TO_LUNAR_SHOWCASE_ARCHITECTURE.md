@@ -836,6 +836,43 @@ Results with this code (contacts ON):
   - Grasps are scripted fixed joints.
   - The Cupola is NOT_RUN.
 
+### Self-collision on (2026-10-26, commit f225c8d)
+
+**Why:** the owner saw arms passing through the body. Every run up to 8206c91 had G1 self-collision off: off in the cuRobo plan (`self_collision_check=False`) and off in PhysX (`enabledSelfCollisions=False`).
+
+**Measure:** `scripts/g1_self_penetration.py`.
+- It takes the URDF link meshes at the recorded poses, every 10th frame.
+- For every link pair more than two joints apart, depth is the deepest vertex of one link inside the other link's convex hull. The hull is built from at most 120 vertices.
+- The hand's own wrist chain is excluded.
+
+**What changed** (`--self-collision` on `iss_activity_drive.py`, `plan_iss_activity.py`, `iss_space_demos.py`):
+- **Planner.** cuRobo self-collision is on. The rest-pose overlaps of the shipped sphere model are resolved: shoulder_roll|torso and wrist_roll|wrist_yaw are ignored, and the shoulder_yaw spheres are 1 cm smaller (`SELF_IGNORE` / `SELF_BUFFER`).
+- **PhysX.** Self-collision is on, set up by `iss_physics_common.add_g1_self_colliders`:
+  - The hands, pelvis and waist_yaw_link have visual meshes only in the URDF. Each gets a convex hull of its visual mesh as a collider. The hands touch G1 links only, not the ISS, because the grasp is scripted. Pelvis and waist sit in a collision group that excludes the legs and torso but not the arms.
+  - Three pairs overlap by design and are filtered: wrist_yaw|wrist_roll, pelvis_contour|hip_pitch, and the shoulder_roll cylinder against the torso collider (filtered collider to collider).
+  - Masses are unchanged (33.34 kg).
+- **Two failure modes found on the way:**
+  - A FilteredPairsAPI on a body acted on its whole USD subtree, so filters on the pelvis or waist, or on a shoulder against its head sibling, switched off every arm-torso and hand-head contact (sc_test7 against sc_test8 bare).
+  - The design overlaps (wrist housings, the shoulder_roll cylinder in the torso shell) held the arm stiff, so the free hand stalled (sc1_main step 4, sc3_jem step 4).
+
+**Results**, contacts ON, hand servo on, one run per route (sc4). Frames are counted by mesh depth, against the same measure on the sv5 runs:
+
+| Run | Steps captured | Frames > 5 mm / > 1 cm / > 2 cm | Max depth | sv5 (self-collision off), same measure | Simulated |
+| --- | --- | --- | ---: | --- | ---: |
+| `sc4_main` | **14 / 36**, stopped at 15 (hand 9.8 cm short after 6 replans); panel reach 2.8 cm | 2.8 % / 0.7 % / 0 % | 0.016 m | 36/36; 51 % / 47 % / 43 %, max 0.072 m | 250 s |
+| `sc4_jem` | **18 / 18** | 0.6 % / 0.2 % / 0 % | 0.013 m | 18/18; 50 % / 49 % / 47 % | 365 s |
+| `sc4_node3` | **10 / 16** | 3.6 % / 0 % / 0 % | 0.009 m | 16/16; 51 % / 48 % / 42 % | 234 s |
+| `sc4_main_1g` (9.81 m/s²) | 1 / 36, miss at handhold 2: 20.9 cm | — | — | `fin_main_1g`: 0/36, miss 17.5 cm | 74 s |
+| `sc4_handoff` (from `sc4_main` step 9) | caught by hand-tool contact 26.0 s after release (hand 9.9 cm from the bar axis) | — | — | `handoff` (from `fin_main_0g_v2`): 6.1 s | 44 s |
+| `sc4_pushoff` | CoM drift 0.122 m/s; max Δp 0.00024 kg·m/s over 8.15 s before first contact | — | — | `pushoff`: 0.088 m/s, 0.00018 over 4.25 s | 41 s |
+
+**Interpretation:**
+- The earlier 36/36, 18/18 and 16/16 relied in part on limbs passing through the body.
+- With self-collision on, the planner's poses press the free arm against the module walls (thousands of arm-ISS contacts in the failing retries). The closed loop also varies run to run: sc3_main, on code before the shoulder filter, stopped at 19/36.
+- Repeatability: UNKNOWN (single runs).
+- Raising the success rate needs planner work (arm-wall clearance, a self-collision-aware servo). No retry counts or tolerances were changed to pass.
+- The showcase v3 cut uses these runs (`scripts/compose_showcase_v2.py --cut v3`).
+
 ## Claim ladder
 
 ### Allowed now

@@ -45,7 +45,7 @@ Speed = screen time ÷ simulated time.
 | 4 | 0:58–1:13 | `jem_sv5_run.json`, last 120 s of the route (ends at completion) | chase camera | label: `Node 2 → JEM` · caption: `Same controller, second route` | live `Handholds  N / 18` (sidecar; `jem_sv5_summary.total_steps`) | hard cut | 8× |
 | 5 | 1:13–1:28 | `node3_sv5_run.json`, last 120 s of the route | chase camera | label: `Node 1 → Node 3` · caption: `Three routes, one code version, one run each` | live `Handholds  N / 16` (sidecar; `node3_sv5_summary.total_steps`) | 12-frame dissolve out (act boundary) | 8× |
 | 6 | 1:28–1:40 | `handoff_run.json`, sim 12–24 s | existing oblique demo camera (behind-left, slow follow) | label: `Tool hand-off` · caption: `Astrobee releases a tool bar. G1 catches it.` | after the catch frame: `Release to catch  6.1 s` (`handoff_summary.catch.t_s − release.t_s`) | hard cut | 1× (no badge) |
-| 7 | 1:40–1:56 | `pushoff_run.json`, sim 0–32 s | existing oblique demo camera | label: `Push-off` · caption 1: `G1 pushes off and lets go` · caption 2 (after the release frame): `Momentum holds until the first contact` | `CoM drift  0.088 m/s` (`momentum_conservation.com_speed_m_s`) · `Δp  ≤ 0.00018 kg·m/s over 4.25 s` (`max_dP_kg_m_s`, `window_s`) | hard cut | 2× |
+| 7 | 1:40–1:56 | `pushoff_run.json`, sim 0–32 s | existing oblique demo camera | label: `Push-off` · caption 1: `G1 pushes off and lets go` · caption 2 (after the release frame): `Momentum constant from release to first contact` | `CoM drift  0.088 m/s` (`momentum_conservation.com_speed_m_s`) · `Δp  ≤ 0.00018 kg·m/s over 4.25 s` (`max_dP_kg_m_s`, `window_s`) | hard cut | 2× |
 | 8 | 1:56–2:11 | `render_cupola_earth.py` re-render, day pass into sunset only (orbit fraction chosen from a 6-frame preview; the Earth/Sun model is unchanged) | static oblique view from the Cupola position, as before | label: `Earth from the Cupola position` | `Orbit time  M min` live (phase × `ORBIT_S`, written per frame to a sidecar by the renderer) | hard cut | badge `≈ N×` = orbit seconds covered ÷ 15 s, computed |
 | 9 | 2:11–2:27 | left: `fin_main_0g_v2_run.json`; right: `fin_main_1g_run.json`; both sim 0–16 s, rendered at 1920×1080 and centre-cropped to 960×1080 (no letterbox) | chase camera, same path definition for both | labels: left `0 g`, right `9.81 m/s²` · caption: `Same route and controller. Only gravity changes.` | left live `Handholds  N / 36` · right live `Handholds  0 / 36` (sidecars; `completed_steps`) · right, after the miss: `Miss at handhold 1  17.5 cm` (`fin_main_1g_summary.capture_error_m[-1]`) | 12-frame dissolve out (act boundary) | 1× (no badge) |
 | 10 | 2:27–2:45 | lunar POV, new render from `scene_walk_rec.json` (P3 policy, seed 1000; existing rollout, no new simulation). Window: the last 4 touchdowns before the course's stop phase, found from `record.contact` | camera rigid on `head_link`, orientation low-passed (1.5 Hz cut-off, zero-phase), FOV 70°, pitch ≈ 15° down; on the last step it eases to 35° down over 3 s, holds while the print forms and dust falls, the foot lifts, then holds 2 s on the print | label: `Moon · learned walking policy` · caption: `Velocity tracking gate not met: 0.24 m/s RMS, limit 0.15` | readout: `g  1.62 m/s²` (`p3_moon_scratch_at_moon_eval.summary.gravity_m_s2`); caption numbers from `tracking_rms_m_s` and `gates.tracking_rms_max` | hard cut in | 0.5× |
@@ -138,3 +138,65 @@ Earlier 720p renders took roughly 1 s per frame. 1080p has 2.25× the pixels, so
 - **Windowed renders.** `--start-s` runs of `render_iss_activity.py` set the chase camera from the whole record, so a window should frame the same as the full render. Inferred, not yet checked.
 - **Cupola day pass.** Where the day pass sits in orbit phase is not known yet; a 6-frame preview decides it.
 - **POV camera.** It may show the robot's own head or shoulders at the 35° pitch; the near clip plane will be set past the head mesh.
+
+## Changes made during G3 (after previews; owner informed 2026-10-25)
+
+- **Shot 9.**
+  - The 9.81 m/s² run gives up at sim 56.5 s, so the window 0–16 s showed no event on either side.
+  - New window: sim 0–56.5 s at 4×, about 14 s, followed by a 3 s hold on the last frames.
+  - The `Miss at handhold 1 17.5 cm` readout appears only during the hold, after the run has ended.
+- **Shot 10, camera pitch.**
+  - A head camera at 35° down never shows the feet: they land almost under the body, about 75° below the eye. Measured on the preview.
+  - The last step now eases to 60° down.
+  - The eye sits 0.18 m ahead of the head mesh's front face, so the chest does not fill the frame. The camera still rides rigidly on `head_link`.
+- **Shot 10, timing.**
+  - The P3 policy steps at about 2.8 Hz per foot. The last touchdown is at sim 17.94 s and that foot lifts at 18.06 s.
+  - The shot covers sim 15.5 → 18.06 s at 0.5×, then holds about 2 s on the print while the replay runs on.
+- **Shot 10, ground.**
+  - All fine noise is removed; it read as ripples even at 0.2 mm under the 8° Sun.
+  - The ground keeps only shallow, soft dimples.
+- **Shot 8.**
+  - A full-orbit preview (12 frames) shows daylight at orbit fraction ≈ 0.56–0.88. That fraction is rendered over 15 s.
+  - Sun intensity raised from 1200 to 2500. The Earth model is unchanged.
+- **Exposure matching.** Applied only across the ISS interior shots (1, 3–7, 9). The Cupola and Moon shots are mostly black sky by design and stay as rendered.
+- **Credits.** The joint counts were dropped from the Moon line; it now reads "Isaac Lab G1 model, not the ISS G1 model". This keeps the credits free of numbers that have no file field.
+- **Correction to G1.** The capture radius does have a field, `capture_radius_m` in each `*_run.json`. It stays off screen as decided.
+- **Version string.** The Isaac Sim version is read from `C:/isaacsim/VERSION`.
+
+## G3/G4 result (2026-10-25)
+
+Output is `outputs/iss_demos/iss_showcase_v2.mp4` (gitignored): 1920×1080, 30 fps, **2:56.9**. The old cut is kept unchanged.
+
+### Cut points
+
+Read from `outputs/showcase_v2/v2_cut.json`.
+
+| Shot | In |
+|---|---|
+| open | 0:00 |
+| title | 0:08.0 |
+| main | 0:14.0 |
+| jem | 0:57.7 |
+| node3 | 1:12.7 |
+| handoff | 1:27.3 |
+| pushoff | 1:39.4 |
+| cupola | 1:55.0 |
+| gravity | 2:10.0 |
+| moon | 2:26.7 |
+| black | 2:35.8 |
+| final | 2:36.8 |
+| credits | 2:42.8 |
+
+The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of the planned 18 s because the policy's last step lifts 0.12 s after touchdown. Nothing was padded to reach 3:00.
+
+### Checked (G4)
+
+- **Frames.** A frame every 2 s (89 frames) and at each shot boundary, all checked against this board.
+- **Text check, in the compose script.** No Hangul code point, banned phrase, `!`, `?` or em dash, and no line over 60 characters, across 147 strings. Re-checked independently from the `v2_cut.json` string list.
+- **Exposure gains** (ISS interior shots only) range from 0.80 to 1.28.
+
+### Not checked
+
+- The cut was not watched in real time.
+- Dissolve smoothness and frame judder were not judged.
+- No audio (none planned).

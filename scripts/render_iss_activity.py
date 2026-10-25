@@ -5,7 +5,8 @@ C:\\isaacsim\\python.bat scripts/render_iss_activity.py --run outputs/iss_activi
 Nothing is re-simulated: link poses come from the run record; physics is disabled on the replica. One camera,
 one render product (retargeting a render product between cameras overexposed later frames, see the S2 receipt).
 Overlay: physics label, step / status from the record, and the standing caveats (scripted grasps, placeholder
-handholds, contacts filtered). Output: outputs/iss_activity/ (gitignored).
+handholds, contacts filtered). --clean drops the overlay and writes a per-frame sidecar instead, so the editor
+draws its own text from the record. Output: outputs/iss_activity/ (gitignored).
 """
 import argparse
 import json
@@ -25,6 +26,8 @@ ap.add_argument("--out", type=Path, help="output mp4 (default: outputs/iss_activ
 ap.add_argument("--subframes", type=int, default=16)
 ap.add_argument("--width", type=int, default=1280)
 ap.add_argument("--height", type=int, default=720)
+ap.add_argument("--clean", action="store_true",
+                help="no burned-in overlay; write <out>_frames.json (t, step, captures, phase per frame) for an editor")
 args = ap.parse_args()
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -191,6 +194,7 @@ frames_dir = OUT / ("render_frames_" + mp4.stem)
 shutil.rmtree(frames_dir, ignore_errors=True)
 frames_dir.mkdir(parents=True)
 n_out = 0
+side = []                                    # --clean: per output frame state for the editor
 route = spec.get("route", "main")
 ROUTE_TEXT = {"main": "Node1 > US Lab > Node2 > Columbus", "jem": "Node2 > JEM PM", "node3": "Node1 > Node3"}
 cev = {s_["step"]: sum((s_.get("contacts") or {}).values()) for s_ in REC["segments"]}
@@ -218,6 +222,12 @@ for i in range(0, len(FR["t"]), args.every):
     dr = ImageDraw.Draw(ov)
     t = FR["t"][i]
     done = [e for e in ends if e[0] <= t]
+    if args.clean:
+        side.append({"t": t, "captures": sum(e[2] == "CAPTURED" for e in done),
+                     "step_done": done[-1][1] if done else 0, "phase": (FR.get("phase") or [None] * (i + 1))[i]})
+        img.convert("RGB").save(frames_dir / f"f{n_out:05d}.png")
+        n_out += 1
+        continue
     nxt = next((e for e in ends if e[0] > t), None)
     status = f"step {nxt[1]} of {REC.get('total_steps')}" if nxt else (f"step {done[-1][1]}: {done[-1][2]}" if done else "")
     cur = nxt[1] if nxt else (done[-1][1] if done else None)
@@ -247,6 +257,9 @@ for i in range(0, len(FR["t"]), args.every):
     Image.alpha_composite(img, ov).convert("RGB").save(frames_dir / f"f{n_out:05d}.png")
     n_out += 1
 fps = max(1, round(30 / args.every * args.speed))
+if args.clean:
+    mp4.with_name(mp4.stem + "_frames.json").write_text(json.dumps(
+        {"run": args.run.name, "fps": fps, "every": args.every, "speed": args.speed, "frames": side}), encoding="utf-8")
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(frames_dir / "f%05d.png"),
                 "-c:v", "libx264", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(mp4)], check=True)
 print(json.dumps({"video": str(mp4), "frames": n_out, "fps": fps, "run": str(args.run)}))

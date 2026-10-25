@@ -7,6 +7,8 @@ Next Generation (assets/raw/earth, see its PROVENANCE.json) and a distant "Sun" 
 (ORBIT_S = 5550 s, ~92.5 min) is compressed into --seconds: the ground track moves under the Cupola (Earth turns
 about the orbit normal) and the Sun direction turns at the same rate in the station frame, so the clip passes
 through day, sunset and night. The station's own lights stay on. Output: outputs/iss_demos/cupola_earth.mp4.
+--phase0/--phase1 render only that fraction of the orbit (e.g. the day pass into sunset) over --seconds; --clean
+drops the burned-in text and writes <out>_frames.json (orbit minutes per frame, speed factor) for an editor.
 """
 import argparse
 import json
@@ -22,6 +24,11 @@ ap.add_argument("--debug-far", action="store_true", help="diagnostic: camera far
 ap.add_argument("--debug-hide", default="", help="diagnostic: comma-separated prim paths made invisible")
 ap.add_argument("--width", type=int, default=1280)
 ap.add_argument("--height", type=int, default=720)
+ap.add_argument("--phase0", type=float, default=None, help="orbit fraction at the first frame (default PHASE0)")
+ap.add_argument("--phase1", type=float, default=None, help="orbit fraction at the last frame (default +1 orbit)")
+ap.add_argument("--clean", action="store_true")
+ap.add_argument("--sun", type=float, default=1200.0, help="Sun intensity")
+ap.add_argument("--out", type=Path, default=None)
 args = ap.parse_args()
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -97,7 +104,7 @@ e_x = UsdGeom.Xformable(earth)
 e_t, e_r = e_x.AddTranslateOp(), e_x.AddRotateXYZOp()
 e_t.Set(Gf.Vec3d(*centre))
 sun = UsdLux.DistantLight.Define(stage, "/World/Orbit/Sun")
-sun.CreateIntensityAttr(1200.0)
+sun.CreateIntensityAttr(args.sun)
 sun.CreateAngleAttr(0.53)
 sun_r = UsdGeom.Xformable(sun).AddRotateXYZOp()
 night = UsdLux.DomeLight.Define(stage, "/World/Orbit/NightFill")   # faint fill so the night side is not pure black
@@ -130,12 +137,15 @@ rgb.attach(rp)
 rep.orchestrator.set_capture_on_play(False)
 font = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", int(22 * args.width / 1280))
 small = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", int(17 * args.width / 1280))
-fdir = OUT / "render_frames_cupola_earth"
+fdir = OUT / ("render_frames_" + (args.out.stem if args.out else "cupola_earth"))
 shutil.rmtree(fdir, ignore_errors=True)
 fdir.mkdir(parents=True)
 n = int(args.seconds * args.fps)
+p0 = PHASE0 if args.phase0 is None else args.phase0
+span = 1.0 if args.phase1 is None else args.phase1 - p0
+side = []
 for k in range(n):
-    phase = (k / n + PHASE0) % 1.0                             # fraction of one orbit
+    phase = (p0 + span * k / n) % 1.0                          # fraction of one orbit
     ang = 360.0 * phase
     e_r.Set(Gf.Vec3f(90.0, ang, 0.0))       # equator under the station (sphere poles on +-z rotated to +-y = orbit
                                              # normal); the ground track moves under the Cupola
@@ -143,6 +153,10 @@ for k in range(n):
     app.update()
     rep.orchestrator.step(rt_subframes=args.subframes, delta_time=0.0, pause_timeline=True)
     img = Image.fromarray(np.asarray(rgb.get_data())[:, :, :3].astype(np.uint8)).convert("RGBA")
+    if args.clean:
+        side.append({"orbit_min": round(phase * ORBIT_S / 60.0, 2)})
+        img.convert("RGB").save(fdir / f"f{k:05d}.png")
+        continue
     ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
     dr = ImageDraw.Draw(ov)
     mins = phase * ORBIT_S / 60.0
@@ -156,7 +170,11 @@ for k in range(n):
         dr.text((20, y), text, font=f, fill=(255, 255, 255, 235))
         y += int(f.size * 1.4)
     Image.alpha_composite(img, ov).convert("RGB").save(fdir / f"f{k:05d}.png")
-mp4 = OUT / "cupola_earth.mp4"
+mp4 = args.out or OUT / "cupola_earth.mp4"
+if args.clean:
+    mp4.with_name(mp4.stem + "_frames.json").write_text(json.dumps(
+        {"orbit_s": ORBIT_S, "fps": args.fps, "speed": span * ORBIT_S / args.seconds, "frames": side}),
+        encoding="utf-8")
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(args.fps), "-i", str(fdir / "f%05d.png"),
                 "-c:v", "libx264", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(mp4)], check=True)
 print(json.dumps({"video": str(mp4), "frames": n, "fps": args.fps}))

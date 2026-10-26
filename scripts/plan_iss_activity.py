@@ -86,6 +86,9 @@ SELF_IGNORE = {f"{s}_{a}": [f"{s}_{b}" if b.startswith("wrist") else b] for s in
                for a, b in (("shoulder_roll_link", "torso_link"), ("wrist_roll_link", "wrist_yaw_link"))}
 SELF_BUFFER = {f"{s}_shoulder_yaw_link": -0.01 for s in ("left", "right")}
 SELF_COLLISION = False   # --self-collision
+# --calm: pelvis orientation weight in the step / retry / traj_step goals (0.1 let each move swing the body a median
+# 55 deg about the held hand, sc4_main) and a weight on it along the trajectory (0 = only the end pose counted)
+PELVIS_RPY_W, PELVIS_RPY_PATH_W = 0.1, 0.0
 
 
 def robot_cfg():
@@ -315,7 +318,7 @@ class Planner:
         k_now = self.fk(q)
         fq = wxyz(Slerp([0, 1], Rotation.concatenate([rot(k_now["pelvis"][1]), rot(facing_quat(route))]))(0.3))
         # pelvis weight 0.3 (was 0.05): a weak pelvis term let the body creep toward the overhead anchors step by step
-        c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
+        c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[PELVIS_RPY_W] * 3),
              HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
              HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)}
         for s in (self.ik, self.ik_local):
@@ -458,7 +461,7 @@ class Planner:
         pel = Tm.apply(k["pelvis"][0] - k[HANDS[held]][0]) + np.asarray(r["held_pos"], float)
         base = base_seed(pel, Tm * rot(k["pelvis"][1]))
         q = np.array([base[j] if j in base else qv for j, qv in zip(self.joints, q)], np.float32)
-        c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
+        c = {"pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[PELVIS_RPY_W] * 3),
              HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
              HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)}
         self.ik_local.update_tool_pose_criteria(c)
@@ -519,8 +522,8 @@ class Planner:
                 orientation_tolerance=3.2))
         held, free = r["held_hand"], r["free_hand"]
         self.trajopt.update_tool_pose_criteria({
-            "pelvis": ToolPoseCriteria(terminal_pose_axes_weight_factor=[0.3, 0.3, 0.3, 0.1, 0.1, 0.1],
-                                       non_terminal_pose_axes_weight_factor=[0.0] * 6),
+            "pelvis": ToolPoseCriteria(terminal_pose_axes_weight_factor=[0.3] * 3 + [PELVIS_RPY_W] * 3,
+                                       non_terminal_pose_axes_weight_factor=[0.0] * 3 + [PELVIS_RPY_PATH_W] * 3),
             HANDS[held]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[1.0] * 6,
                                           non_terminal_pose_axes_weight_factor=[1.0] * 6),
             HANDS[free]: ToolPoseCriteria(terminal_pose_axes_weight_factor=[5.0, 5.0, 5.0, 0.0, 0.0, 0.0],
@@ -541,7 +544,7 @@ class Planner:
         act_i = [i for i, j in enumerate(self.joints) if j not in BASE]
         for s in (self.ik, self.ik_local):
             s.update_tool_pose_criteria({
-                "pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[0.1] * 3),
+                "pelvis": ToolPoseCriteria.track_position_and_orientation(xyz=[0.3] * 3, rpy=[PELVIS_RPY_W] * 3),
                 HANDS[held]: ToolPoseCriteria.track_position_and_orientation(xyz=[1.0] * 3, rpy=[HELD_RPY_W] * 3),
                 HANDS[free]: ToolPoseCriteria.track_position(xyz=[1.0] * 3)})
         seed, large = None, None
@@ -690,11 +693,15 @@ def main():
     ap.add_argument("--frame-offset", type=float, nargs=3, metavar=("X", "Y", "Z"),
                     help="planning-frame origin in the scene frame (default OFFSET); the base prisms reach +-10 m from it")
     ap.add_argument("--self-collision", action="store_true", help="plan with G1 self-collision (see SELF_IGNORE)")
+    ap.add_argument("--calm", type=float, nargs=2, metavar=("END_W", "PATH_W"),
+                    help="pelvis orientation weights at the goal and along the trajectory (default 0.1 0)")
     args = ap.parse_args()
-    global OFFSET, SELF_COLLISION
+    global OFFSET, SELF_COLLISION, PELVIS_RPY_W, PELVIS_RPY_PATH_W
     if args.frame_offset:
         OFFSET = np.asarray(args.frame_offset, float)
     SELF_COLLISION = args.self_collision
+    if args.calm:
+        PELVIS_RPY_W, PELVIS_RPY_PATH_W = args.calm
     if args.serve:
         serve(args.serve, Planner(use_scene=not args.no_scene))
         return

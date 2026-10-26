@@ -60,6 +60,8 @@ def main():
     ap.add_argument("--hand-servo", action="store_true", help="closed-loop free-hand correction after each move")
     ap.add_argument("--gravity", type=float, default=0.0, help="scene gravity magnitude (m/s^2, -z); 9.81 = ground")
     ap.add_argument("--max-steps", type=int, help="stop after this many steps (ablations)")
+    ap.add_argument("--calm", type=float, nargs=2, metavar=("END_W", "PATH_W"),
+                    help="planner pelvis orientation weights at the goal / along the path (planner default 0.1 0)")
     ap.add_argument("--self-collision", action="store_true",
                     help="G1 self-collision ON in the planner and in PhysX (off up to commit 8206c91)")
     ap.add_argument("--planner-mode", default="traj_step", choices=["traj_step", "step"],
@@ -80,7 +82,8 @@ def main():
 
     log = open(OUT / "planner_service.log", "w", encoding="utf-8")
     srv = subprocess.Popen([py, str(ROOT / "scripts/plan_iss_activity.py"), "--serve", str(args.port), "--frame-offset",
-                            *map(str, route["frame_offset_m"]), *(["--self-collision"] if args.self_collision else [])],
+                            *map(str, route["frame_offset_m"]), *(["--self-collision"] if args.self_collision else []),
+                            *(["--calm", *map(str, args.calm)] if args.calm else [])],
                            cwd=ROOT,
                            stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
     check = None
@@ -104,7 +107,7 @@ def main():
                           "route": args.route, "max_steps": args.max_steps,
                           **CONTROL, "gains": args.gains, "hold_s": args.hold_s,
                           "velocity_feedforward": args.velocity_ff, "hand_servo": args.hand_servo, "gravity_m_s2": args.gravity, "time_scale": args.time_scale,
-                          "self_collision": args.self_collision}}
+                          "self_collision": args.self_collision, "calm": args.calm}}
         (OUT / (args.tag + "_spec.json")).write_text(json.dumps(spec), encoding="utf-8")
         cmd = (f'"{ISAAC}" scripts\\iss_activity_run.py --spec "{OUT / (args.tag + "_spec.json")}" '
                f'--out "{OUT / (args.tag + "_run.json")}" --record' + (" --filter-contacts" if args.filter_contacts else ""))

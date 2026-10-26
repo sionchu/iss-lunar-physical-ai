@@ -660,6 +660,35 @@ def serve(port, pl):
             return
 
 
+def calm_or_relaxed(pl, r):
+    """Run one request; with --calm, corrective retries (relax_pelvis) use the default pelvis weights, and a step
+    that finds no successful plan is planned again with the default pelvis
+    weights (0.1, 0) and the better of the two is returned (calm where it works, never less capable than before;
+    calm_jem stalled at step 5 with every calm plan failing). The result records which weights it used."""
+    global PELVIS_RPY_W, PELVIS_RPY_PATH_W
+    calm = (PELVIS_RPY_W, PELVIS_RPY_PATH_W)
+    if r.get("relax_pelvis"):                 # corrective retries: reach first (a calm-only jem run stalled at 4/18)
+        PELVIS_RPY_W, PELVIS_RPY_PATH_W = 0.1, 0.0
+        try:
+            return getattr(pl, r["mode"])(r)
+        finally:
+            PELVIS_RPY_W, PELVIS_RPY_PATH_W = calm
+    res = getattr(pl, r["mode"])(r)
+    if r["mode"] not in ("step", "traj_step") or res.get("plan_success") or calm == (0.1, 0.0):
+        return res
+    PELVIS_RPY_W, PELVIS_RPY_PATH_W = 0.1, 0.0
+    try:
+        alt = getattr(pl, r["mode"])(r)
+    finally:
+        PELVIS_RPY_W, PELVIS_RPY_PATH_W = calm
+    key = "free_hand_error_cc_m" if "free_hand_error_cc_m" in alt else "plan_free_hand_error_m"
+    if alt.get("plan_success") or alt.get(key, 9.0) < res.get(key, 9.0):
+        alt["pelvis_weights_relaxed"] = True
+        print(f"pelvis weights relaxed for a {r['mode']} request", flush=True)
+        return alt
+    return res
+
+
 def handle(conn, pl):
     if True:
         with conn, conn.makefile("rw", encoding="utf-8") as fh:
@@ -676,7 +705,7 @@ def handle(conn, pl):
                     raise StopIteration
                 t1 = time.time()
                 try:
-                    res = getattr(pl, r["mode"])(r)
+                    res = calm_or_relaxed(pl, r)
                     res["solve_s"] = round(time.time() - t1, 2)
                 except Exception as exc:                  # report, keep serving
                     res = {"error": f"{type(exc).__name__}: {exc}"}

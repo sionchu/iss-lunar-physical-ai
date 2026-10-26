@@ -397,7 +397,8 @@ def main():
                            "pelvis_quat_wxyz": s_["pelvis_quat_wxyz"], "held_hand": held,
                            "held_pos": s_["hands"][held]["pos"], "held_quat_wxyz": s_["hands"][held]["quat_wxyz"],
                            "free_hand": hand, "a_prev": anchors[st["step"] - 1], "a_cur": st["anchor"],
-                           "a_next": anchors[min(st["step"] + 1, len(anchors) - 1)], "frames": ch.get("frames", 10)})
+                           "a_next": anchors[min(st["step"] + 1, len(anchors) - 1)], "frames": ch.get("frames", 10),
+                           "relax_pelvis": True})   # retries reach first: default pelvis weights (calm runs)
                 if fix.get("error"):
                     break
                 q0 = art.get_dof_positions().numpy()[0]

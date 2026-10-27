@@ -36,6 +36,12 @@ CUTS = {
     "v3": dict(clips="showcase_v3", main="sc4_main", jem="sc4_jem", node3="sc4_node3", zero="sc4_main",
                one="sc4_main_1g", handoff="sc4_handoff", pushoff="sc4_pushoff", moon="p7_1300_at_moon_eval",
                receipt="Self-collision on", self_collision=True),
+    # v4: calmer motion (planner pelvis weights, slower moves, more damping) at 3x; the main route is shown in three
+    # parts (start, panel reach, finish) because 760 s at 3x would not fit
+    "v4": dict(clips="showcase_v4", main="calm2_main", jem="slow2_jem", node3="slow2_node3", zero="calm2_main",
+               one="calm2_main_1g", handoff="calm2_handoff", pushoff="calm2_pushoff", moon="p7_1300_at_moon_eval",
+               receipt="Calmer motion", self_collision=True, calm=True,
+               main_parts=("c03a_main", "c03b_main", "c03c_main")),
 }
 
 
@@ -103,8 +109,9 @@ def readout(name, values, a, b, y_off=0):
     return fs
 
 
-def steps(sidecar, total, dur):
-    """[(t0, t1, 'N / total')] from a render sidecar's per-frame capture count."""
+def steps(sidecar, total, dur, final=None):
+    """[(t0, t1, 'N / total')] from a render sidecar's per-frame capture count; final (the run summary's count)
+    replaces the last value when the record ends before the last capture is logged."""
     fr = js(sidecar)["frames"]
     out, cur, t0 = [], None, 0.0
     for k, f in enumerate(fr):
@@ -113,6 +120,9 @@ def steps(sidecar, total, dur):
             if cur is not None:
                 out.append((t0, k / FPS, f"{cur} / {total}"))
             cur, t0 = v, k / FPS
+    if final is not None and final > cur:
+        out.append((t0, max(t0, dur - 5.0), f"{cur} / {total}"))
+        cur, t0 = final, max(t0, dur - 5.0)
     out.append((t0, dur, f"{cur} / {total}"))
     return out
 
@@ -169,7 +179,8 @@ def main():
     mc = sp["momentum_conservation"]
 
     # exposure matching across the ISS interior shots only (Cupola and Moon are mostly black sky by design)
-    iss = ["c01_open", "c03_main", "c04_jem", "c05_node3", "c06_handoff", "c07_pushoff", "c09_zero", "c09_one"]
+    iss = ["c01_open", *(cut.get("main_parts") or ["c03_main"]), "c04_jem", "c05_node3", "c06_handoff", "c07_pushoff",
+           "c09_zero", "c09_one"]
     lum = {s: exposure_gain(s) for s in iss if (V2 / f"{s}.mp4").exists()}
     ref = float(np.median(list(lum.values())))
     gain = {s: float(np.clip(ref / lum[s], 0.8, 1.6)) for s in lum}
@@ -210,7 +221,29 @@ def main():
             text(t1, "title", "(w-text_w)/2", "h/2-80", 0.3, d - 0.3),
             text(t2, "caption", "(w-text_w)/2", "h/2+20", 0.6, d - 0.3)]), d)
     # 3 main route, full, 8x; 10 % eased push-in over the last 6 s
-    if "main" in want:
+    if "main" in want and cut.get("main_parts"):
+        reach = sm["panel_reach"]["min_distance_m"] * 100
+        lbl = "Node 1 → US Lab → Node 2 → Columbus"
+        for k, stem in enumerate(cut["main_parts"]):
+            sc = V2 / f"{stem}_frames.json"
+            d = frames(sc) / FPS
+            ov = [label(lbl, 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d),
+                  *readout("Handholds", steps(sc, sm["total_steps"], d,
+                                             sm["completed_steps"] if k == len(cut["main_parts"]) - 1 else None),
+                           0.0, d)]
+            tp = next((i for i, f in enumerate(js(sc)["frames"]) if f["phase"] == "panel_reach"), None)
+            if k == 0:
+                ov.append(caption("Hand over hand, contacts and self-collision on", 4.0, d))
+            if tp is not None:
+                tp /= FPS
+                ov += [caption("Reach to the service panel", tp, tp + 4.0),
+                       *readout("Panel reach", [(tp, tp + 4.0, f"{reach:.1f} cm")], tp, tp + 4.0,
+                                y_off=SIZE["readout"] + 30)]
+            if k == len(cut["main_parts"]) - 1:
+                ov += stopped(sm, d) or [caption(f"{sm['completed_steps']} of {sm['total_steps']} handholds",
+                                                 max(0.0, d - 5.0), d)]
+            clip(f"main{'abc'[k]}", stem, d, ov)
+    elif "main" in want:
         sc = V2 / "c03_main_frames.json"
         sp3 = js(sc)["speed"]
         d = frames(sc) / FPS
@@ -338,6 +371,8 @@ def main():
                    "Some handholds and the panel anchor are placeholders.",
                    *([f"Hand-off, push-off and the {g1:g} m/s² comparison start",
                       "from an earlier controller run."] if not cut["self_collision"] else
+                     (["Main route: the planner holds the body orientation.",
+                       "JEM, Node 3: slower moves and more damping only."] if cut.get("calm") else []) +
                      ["Self-collision is on in planning and physics.",
                       "Hand, pelvis and waist colliders come from visual meshes.",
                       "Hand-off and push-off start at main-route handhold 9."]),

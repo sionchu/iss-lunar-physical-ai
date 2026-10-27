@@ -873,6 +873,38 @@ Results with this code (contacts ON):
 - Raising the success rate needs planner work (arm-wall clearance, a self-collision-aware servo). No retry counts or tolerances were changed to pass.
 - The showcase v3 cut uses these runs (`scripts/compose_showcase_v2.py --cut v3`).
 
+### Calmer motion (2026-10-27, commit 35ae13c)
+
+**Why.** The owner saw the legs and torso fling around. The legs are locked in the tuck (joint speed p95 0.03 rad/s); the whole body swung about the held hand. In `sc4_main` the pelvis turned a median 68 deg per move, at a median 17.5 deg/s and a peak of 944 deg/s. At 8x playback that reads as flailing. Measured with `scripts/iss_body_motion.py`.
+
+**Changes.**
+- **Planner.** `plan_iss_activity.py --calm END_W PATH_W` raises the pelvis-orientation weight at the goal (default 0.1) and along the trajectory (default 0). Corrective retries, and steps whose calm plan fails, use the default weights.
+- **Executor.** Moves 1.5x longer (`--time-scale 1.5`) and joint damping 30 -> 45 (`--gains 300 45`).
+- **Video.** 3x playback instead of 8x.
+
+**Tests.**
+- Main, 8 steps, `--calm 2 1`: 8/8; rotation per move 21 deg; median 6.6 deg/s, peak 146 deg/s.
+- JEM, 6 steps, calm: stalled at step 5 (4/6). It also stalled with `--calm 1 0.3` and with the relaxed-retry fallback; the right leg was wedged against the structure.
+- JEM, 6 steps, slower moves and damping only: 6/6.
+
+**Results.** Self-collision on, one run per route:
+
+| Run | Setting | Steps | Pelvis deg/s median / p95 / max | Rotation per move (median) | sc4 (fast) |
+| --- | --- | --- | --- | --- | --- |
+| `calm2_main` | calm 2 1 + slow + kd 45 | **36 / 36**; panel reach 23.8 cm (miss) | 9.5 / 52 / 232 | 49 deg | 14/36; 17.5 / 82 / 944; 68 deg |
+| `slow2_jem` | slow + kd 45 | **6 / 18** | 12.6 / 55 / 228 | 63 deg | 18/18; 18.0 / 83 / 442 |
+| `slow2_node3` | slow + kd 45 | **9 / 16** | 9.5 / 50 / 458 | 40 deg | 10/16; 17.9 / 69 / 388 |
+| `calm2_node3` | calm 2 1 + slow + kd 45 | 5 / 16 | — | — | — |
+| `calm2_jem` | slow + kd 45 | Isaac run ended mid-step 6 without a record, cause UNKNOWN; rerun as `slow2_jem` | — | — | — |
+| `calm2_main_1g` (9.81 m/s²) | calm 2 1 | 1 / 36 | — | — | — |
+| `calm2_handoff` (from `calm2_main` step 9) | — | caught by contact 7.05 s after release | — | — | 26.0 s |
+| `calm2_pushoff` | — | CoM 0.255 m/s; Δp ≤ 0.0004 kg·m/s over 2.0 s to the first contact | — | — | 0.122 m/s over 8.15 s |
+
+**Interpretation.**
+- The body turns about half as fast and the peaks drop on main.
+- JEM fell from 18/18 to 6/18. Single runs vary strongly on the same code; repeatability is UNKNOWN.
+- The video keeps whichever setting is listed in the credits: main calm, JEM and Node 3 slow only. This choice was made after seeing the runs.
+
 ## Claim ladder
 
 ### Allowed now

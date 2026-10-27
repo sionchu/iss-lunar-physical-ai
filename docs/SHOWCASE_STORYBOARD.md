@@ -226,3 +226,34 @@ The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of th
 - Exposure gains 0.80–1.23.
 
 **Not checked.** The cut was not watched in real time. Whether the P7 asymmetry reads as a limp is NOT_RUN.
+
+## v4 (2026-10-28): calmer motion, 3x playback
+
+**Why.** The owner saw the body and legs flinging about. See "Calmer motion" in `docs/ISS_TO_LUNAR_SHOWCASE_ARCHITECTURE.md`.
+
+**Build.**
+- `compose_showcase_v2.py --cut v4` writes `outputs/iss_demos/iss_showcase_v4.mp4` (3:16.9).
+- Clips are in `outputs/showcase_v4/`.
+- Cupola and both lunar shots are reused from v3.
+
+**Runs used.** `calm2_main` (36/36), `slow2_jem` (6/18), `slow2_node3` (9/16), `calm2_main_1g`, `calm2_handoff`, `calm2_pushoff`.
+
+**Changes from v3.**
+- **Playback.** Routes at 3× instead of 8×. The 9.81 m/s² comparison is at 6×; it runs 0–126.7 s of simulation.
+- **Main route, in three shots:**
+  - start (sim 0–60 s)
+  - panel reach (sim 180–220 s; the reach starts at 205.3 s)
+  - finish (sim 670–715 s)
+- **Main counter.** It ends on the summary's 36/36, because the record stops before the last capture is logged.
+- **JEM and Node 3.** The last 45 s of each run.
+- **Credits** add two lines:
+  - "Main route: the planner holds the body orientation."
+  - "JEM, Node 3: slower moves and more damping only."
+
+**Checked.**
+- Frames every 2.5 s from 0:14 to 2:16.
+- Spot frames at 1:00, 2:20, 2:30 and 2:38.
+- Text check: 110 strings pass.
+- Exposure gains 0.80–1.24.
+
+**Not checked.** The cut was not watched in real time.

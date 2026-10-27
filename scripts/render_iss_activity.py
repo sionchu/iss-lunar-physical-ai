@@ -29,6 +29,8 @@ ap.add_argument("--height", type=int, default=720)
 ap.add_argument("--focus", help="diagnostic: camera ~0.5 m from this link (record link name), looking at it")
 ap.add_argument("--focus-offset", type=float, nargs=3, default=(0.0, 0.0, 0.0), help="point in the link frame")
 ap.add_argument("--focus-eye", type=float, nargs=3, default=(-0.3, -0.35, 0.15), help="eye offset from that point (scene)")
+ap.add_argument("--speed-map", type=Path,
+                help="[[t0, t1, speed], ...] (scripts/speed_map.py): variable playback speed at 30 fps output")
 ap.add_argument("--clean", action="store_true",
                 help="no burned-in overlay; write <out>_frames.json (t, step, captures, phase per frame) for an editor")
 args = ap.parse_args()
@@ -201,9 +203,18 @@ side = []                                    # --clean: per output frame state f
 route = spec.get("route", "main")
 ROUTE_TEXT = {"main": "Node1 > US Lab > Node2 > Columbus", "jem": "Node2 > JEM PM", "node3": "Node1 > Node3"}
 cev = {s_["step"]: sum((s_.get("contacts") or {}).values()) for s_ in REC["segments"]}
-for i in range(0, len(FR["t"]), args.every):
-    if not args.start_s <= FR["t"][i] <= args.end_s:
-        continue
+if args.speed_map:                           # recorded at 30 Hz: advance `speed` records per output frame
+    SMAP = json.loads(args.speed_map.read_text(encoding="utf-8"))
+    idx, i, carry = [], next(k for k, x in enumerate(FR["t"]) if x >= SMAP[0][0]), 0.0
+    while i < len(FR["t"]) and FR["t"][i] <= SMAP[-1][1]:
+        sp = next((v for a, b, v in SMAP if a <= FR["t"][i] <= b), SMAP[-1][2])
+        idx.append((i, sp))
+        carry += sp
+        i += int(carry)
+        carry -= int(carry)
+else:
+    idx = [(i, args.speed) for i in range(0, len(FR["t"]), args.every) if args.start_s <= FR["t"][i] <= args.end_s]
+for i, cur_speed in idx:
     apply_frame(i)
     if args.focus:
         li = [q.split("/")[-1] for q in PATHS].index(args.focus)
@@ -232,7 +243,7 @@ for i in range(0, len(FR["t"]), args.every):
     t = FR["t"][i]
     done = [e for e in ends if e[0] <= t]
     if args.clean:
-        side.append({"t": t, "captures": sum(e[2] == "CAPTURED" for e in done),
+        side.append({"t": t, "speed": cur_speed, "captures": sum(e[2] == "CAPTURED" for e in done),
                      "step_done": done[-1][1] if done else 0, "phase": (FR.get("phase") or [None] * (i + 1))[i]})
         img.convert("RGB").save(frames_dir / f"f{n_out:05d}.png")
         n_out += 1
@@ -265,7 +276,7 @@ for i in range(0, len(FR["t"]), args.every):
         y += int(f.size * 1.4)
     Image.alpha_composite(img, ov).convert("RGB").save(frames_dir / f"f{n_out:05d}.png")
     n_out += 1
-fps = max(1, round(30 / args.every * args.speed))
+fps = 30 if args.speed_map else max(1, round(30 / args.every * args.speed))
 if args.clean:
     mp4.with_name(mp4.stem + "_frames.json").write_text(json.dumps(
         {"run": args.run.name, "fps": fps, "every": args.every, "speed": args.speed, "frames": side}), encoding="utf-8")

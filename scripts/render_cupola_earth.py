@@ -28,6 +28,9 @@ ap.add_argument("--phase0", type=float, default=None, help="orbit fraction at th
 ap.add_argument("--phase1", type=float, default=None, help="orbit fraction at the last frame (default +1 orbit)")
 ap.add_argument("--clean", action="store_true")
 ap.add_argument("--sun", type=float, default=1200.0, help="Sun intensity")
+ap.add_argument("--window-faces", help="json list of Cupola face indices to delete (keeps the Cupola visible)")
+ap.add_argument("--look", type=float, nargs=3, default=(0.55, 0.0, -1.0), help="view direction from the eye")
+ap.add_argument("--focal", type=float, default=12.0)
 ap.add_argument("--out", type=Path, default=None)
 args = ap.parse_args()
 
@@ -111,19 +114,37 @@ night = UsdLux.DomeLight.Define(stage, "/World/Orbit/NightFill")   # faint fill 
 night.CreateIntensityAttr(25.0)
 night.CreateColorAttr(Gf.Vec3f(0.55, 0.65, 1.0))
 
-# The NASA Cupola mesh closes its windows with opaque panes; removing them in memory (glass + nearby faces, as holes,
-# cut-out material or deleted faces) still left the view blocked, so the Cupola mesh is hidden for this shot: the
-# camera sits at the Cupola position with nothing between it and Earth (stated on the overlay)
-UsdGeom.Imageable(stage.GetPrimAtPath("/World/Environment/ISS/Visual/Cupola")).MakeInvisible()
+# The NASA Cupola mesh (one 26.8k-face mesh) closes its windows with opaque panes and covers. Default: the Cupola
+# is hidden and the camera sits at its position. --window-faces <json>: keep the Cupola and delete only the listed
+# faces (found by casting rays from the camera toward Earth and peeling the large flat faces they hit first, layer
+# by layer: inner/outer panes and covers), so Earth is seen through the window frames
+CUPOLA = "/World/Environment/ISS/Visual/Cupola"
+if args.window_faces:
+    drop = set(json.loads(Path(args.window_faces).read_text(encoding="utf-8")))
+    cm = UsdGeom.Mesh(stage.GetPrimAtPath(CUPOLA + "/Cupola_Int_Cabin/Untitled_528_mesh"))
+    cnt, idx = list(cm.GetFaceVertexCountsAttr().Get()), list(cm.GetFaceVertexIndicesAttr().Get())
+    keep_c, keep_i, o = [], [], 0
+    for f, c in enumerate(cnt):
+        if f not in drop:
+            keep_c.append(c)
+            keep_i.extend(idx[o:o + c])
+        o += c
+    cm.GetFaceVertexCountsAttr().Set(keep_c)
+    cm.GetFaceVertexIndicesAttr().Set(keep_i)
+    for pv in UsdGeom.PrimvarsAPI(cm).GetPrimvars():           # per-face/corner primvars no longer match
+        if pv.GetInterpolation() in (UsdGeom.Tokens.faceVarying, UsdGeom.Tokens.uniform):
+            pv.GetAttr().Clear()
+else:
+    UsdGeom.Imageable(stage.GetPrimAtPath(CUPOLA)).MakeInvisible()
 for hp in filter(None, args.debug_hide.split(",")):
     UsdGeom.Imageable(stage.GetPrimAtPath(hp)).MakeInvisible()
 
 cam = UsdGeom.Camera.Define(stage, "/World/Cameras/CupolaEarth")
-cam.CreateFocalLengthAttr(12.0)
+cam.CreateFocalLengthAttr(args.focal)
 cam.CreateHorizontalApertureAttr(36.0)
 cam.CreateVerticalApertureAttr(36.0 * args.height / args.width)
 cam.CreateClippingRangeAttr(Gf.Vec2f(0.02, 2.0 * (ALT + 2 * R_EARTH)))
-look = eye + np.array([0.55, 0.0, -1.0])                      # oblique: limb near the top of the frame
+look = eye + np.array(args.look)                               # default oblique: limb near the top of the frame
 if args.debug_far:
     look = centre
     eye = centre + np.array([0.0, -3.0 * R_EARTH, 0.5 * R_EARTH])

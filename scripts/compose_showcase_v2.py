@@ -42,6 +42,12 @@ CUTS = {
                one="calm2_main_1g", handoff="calm2_handoff", pushoff="calm2_pushoff", moon="p7_1300_at_moon_eval",
                receipt="Calmer motion", self_collision=True, calm=True,
                main_parts=("c03a_main", "c03b_main", "c03c_main")),
+    # v5: same runs as v4, routes as one continuous speed ramp each (scripts/speed_map.py: fast in transit, slow at
+    # selected captures and the panel reach; the badge follows the speed), Earth seen through the Cupola windows
+    "v5": dict(clips="showcase_v5", main="calm2_main", jem="slow2_jem", node3="slow2_node3", zero="calm2_main",
+               one="calm2_main_1g", handoff="calm2_handoff", pushoff="calm2_pushoff", moon="p7_1300_at_moon_eval",
+               receipt="Calmer motion", self_collision=True, calm=True, window=True, teaser=True,
+               title="Unitree G1, from the ISS to the Moon"),
 }
 
 
@@ -95,6 +101,22 @@ def caption(t, a, b):                                  # caption, lower left (ma
 
 def badge(t, a, b):                                    # speed badge, top right
     return text(t, "badge", f"w-{M}-text_w", M, a, b, box=True)
+
+
+def speed_badges(sidecar, d):
+    """Speed badge(s) for a clip: one per constant-speed run when the render used a speed map, else the clip speed."""
+    j = js(sidecar)
+    fr = j["frames"]
+    if not fr or "speed" not in fr[0]:
+        return [badge(f"{j['speed']:g}×", 0.0, d)] if j["speed"] != 1 else []
+    out, a = [], 0
+    for k in range(1, len(fr) + 1):
+        if k == len(fr) or fr[k]["speed"] != fr[a]["speed"]:
+            b = k / FPS if k < len(fr) else d
+            out.append(text(f"{fr[a]['speed']:g}×", "badge", f"w-{M}-text_w", M, a / FPS, b, box=True,
+                            fade=False))
+            a = k
+    return out
 
 
 def readout(name, values, a, b, y_off=0):
@@ -209,14 +231,38 @@ def main():
         add(name, [V2 / f"{stem}.mp4"], f"[{{i0}}:v]{src(stem, extra)},trim=duration={dur:.3f},setpts=PTS-STARTPTS,"
             + ",".join(overlays), dur)
 
-    # 1 cold open
-    if "open" in want:
+    # 1 cold open; v5: a 10 s teaser of the film's strongest moments instead (owner: an intro that holds viewers),
+    # cut from the same clips, each with its playback speed, then the title
+    if "open" in want and cut.get("teaser"):
+        def at_speed(stem, ss):
+            j = js(V2 / f"{stem}_frames.json")
+            fr = j["frames"]
+            k = min(int(ss * FPS), len(fr) - 1)
+            return fr[k].get("speed", j.get("speed", 1.0)) if fr else j.get("speed", 1.0)
+
+        def first_slow(stem):
+            fr = js(V2 / f"{stem}_frames.json")["frames"]
+            k = next(i for i, f in enumerate(fr) if f.get("speed", 99) < 2)
+            return k / FPS + 0.6
+
+        dpov = frames(V2 / "c10_pov_frames.json") / FPS
+        parts = [("c08_cupola", 0.2, 2.2), ("c03_main", first_slow("c03_main"), 2.0), ("c07_pushoff", 1.5, 1.8),
+                 ("c09_one", 10.5, 1.8), ("c10_walk", 1.0, 1.6), ("c10_pov", dpov - 2.2, 2.2)]
+        for n, (stem, ss, dur) in enumerate(parts):
+            spd = at_speed(stem, ss)
+            add(f"teaser{n}", [V2 / f"{stem}.mp4"],
+                f"[{{i0}}:v]{src(stem)},trim=start={ss:.3f}:duration={dur:.3f},setpts=PTS-STARTPTS"
+                + ("," + text(f"{spd:g}×" if float(spd).is_integer() or spd < 10 else f"≈ {spd:.0f}×", "badge",
+                              f"w-{M}-text_w", M, 0.0, dur, box=True, fade=False)
+                   if spd != 1 else ""), dur)
+    elif "open" in want:
         d = frames(V2 / "c01_open_frames.json") / FPS
         clip("open", "c01_open", d, [label("ISS · US Laboratory", 4.0, d)])
     # 2 title
     if "title" in want:
         d = 6.0
-        t1, t2 = "Unitree G1 aboard the ISS", f"Simulated in NVIDIA Isaac Sim {isaac} with PhysX, 0 g"
+        t1 = cut.get("title", "Unitree G1 aboard the ISS")
+        t2 = f"Simulated in NVIDIA Isaac Sim {isaac} with PhysX" + ("" if cut.get("teaser") else ", 0 g")
         add("title", [], f"color=c=black:s={W}x{H}:r={FPS}:d={d}," + ",".join([
             text(t1, "title", "(w-text_w)/2", "h/2-80", 0.3, d - 0.3),
             text(t2, "caption", "(w-text_w)/2", "h/2+20", 0.6, d - 0.3)]), d)
@@ -253,7 +299,7 @@ def main():
         tp = next(k for k, f in enumerate(js(sc)["frames"]) if f["phase"] == "panel_reach") / FPS
         c1 = ("Hand over hand, contacts and self-collision on" if cut["self_collision"] else
               "Hand over hand along the handholds, contacts on")
-        clip("main", "c03_main", d, [label("Node 1 → US Lab → Node 2 → Columbus", 0.0, d), badge(f"{sp3:g}×", 0.0, d),
+        clip("main", "c03_main", d, [label("Node 1 → US Lab → Node 2 → Columbus", 0.0, d), *speed_badges(sc, d),
                                      caption(c1, 6.0, tp - 0.3),
                                      caption("Reach to the service panel", tp, tp + 4.0),
                                      *readout("Handholds", steps(sc, sm["total_steps"], d), 0.0, d),
@@ -268,7 +314,7 @@ def main():
             sc = V2 / f"{stem}_frames.json"
             d = frames(sc) / FPS
             end = d - 5.0 if s["completed_steps"] < s["total_steps"] else d
-            clip(name, stem, d, [label(lbl, 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d), caption(cap, 1.0, end - 0.3),
+            clip(name, stem, d, [label(lbl, 0.0, d), *speed_badges(sc, d), caption(cap, 1.0, end - 0.3),
                                  *readout("Handholds", steps(sc, s["total_steps"], d), 0.0, d), *stopped(s, d)])
     # 6 hand-off, 1x
     if "handoff" in want:
@@ -310,7 +356,8 @@ def main():
                 if cur is not None:
                     vals.append((t0, k / FPS, f"{cur} min"))
                 cur, t0 = v, k / FPS
-        clip("cupola", "c08_cupola", d, [label("Earth from the Cupola position", 0.0, d),
+        clip("cupola", "c08_cupola", d, [label("Earth through the Cupola windows" if cut.get("window") else
+                                               "Earth from the Cupola position", 0.0, d),
                                          badge(f"≈ {cj['speed']:.0f}×", 0.0, d),
                                          *readout("Orbit time", vals, 0.5, d)])
     # 9 0 g | 9.81 m/s^2, full height side by side, 4x, then a 3 s hold on the last frames
@@ -377,7 +424,8 @@ def main():
                       "Hand, pelvis and waist colliders come from visual meshes.",
                       "Hand-off and push-off start at main-route handhold 9."]),
                    "Astrobee propulsion is a force-limited stand-in.",
-                   "Earth view is rendered; the Cupola mesh is hidden.",
+                   ("Earth is rendered; the Cupola window panes are removed." if cut.get("window") else
+                    "Earth view is rendered; the Cupola mesh is hidden."),
                    "Footprints and dust launch are rendered effects.",
                    f"Dust follows ballistic paths at {g_moon} m/s².",
                    "Moon: Isaac Lab G1 model, not the ISS G1 model.",

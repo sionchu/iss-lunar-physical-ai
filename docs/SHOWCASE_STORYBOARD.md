@@ -257,3 +257,42 @@ The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of th
 - Exposure gains 0.80–1.24.
 
 **Not checked.** The cut was not watched in real time.
+
+## v5 (2026-10-28): speed ramp, Earth through the window, teaser intro
+
+**Why.** The owner found the later parts slow and loose, and asked for Earth seen through a window, not as a separate picture. They also asked for an intro that holds viewers to the end.
+
+**Build.**
+- `compose_showcase_v2.py --cut v5` writes `outputs/iss_demos/iss_showcase_v5.mp4` (3:04.3).
+- Clips are in `outputs/showcase_v5/`.
+- The runs are the same as v4.
+
+**Changes.**
+- **Teaser, about 12 s.** Six cuts from the film's own clips, each with its speed badge (badges show < 2.5 s here, an accepted exception):
+  1. Earth through the Cupola windows
+  2. a slow-motion capture
+  3. push-off drift
+  4. the 9.81 m/s² miss
+  5. lunar stride
+  6. the bootprint with dust
+
+  Then the title "Unitree G1, from the ISS to the Moon".
+- **Route speed ramp.** Each route is one continuous clip with variable speed, built by `scripts/speed_map.py` from the run record and rendered with `render_iss_activity.py --speed-map`:
+
+  | Route | Slow-down | Transit and idle |
+  | --- | --- | --- |
+  | Main (715 s) | 1.5× for 2.5 s before to 1.5 s after every 6th capture, the last capture and the panel reach | 20× |
+  | JEM, Node 3 | the same | 24× |
+
+  The badge follows the speed, and each badge value holds ≥ 2.5 s.
+- **Cupola.** Earth is seen through the Cupola windows: `render_cupola_earth.py --window-faces` deletes 68 Cupola faces found by ray peeling from the camera (`outputs/iss_demos/cupola_window_faces.json`: inner and outer panes, covers). The window frames stay.
+- **Speeds and lengths.** Push-off 2× (10 s). 9.81 m/s² comparison 10× (12.7 s).
+- **Credits.** "Earth is rendered; the Cupola window panes are removed."
+
+**Checked.**
+- Teaser at 2 fps.
+- Body frames every 4 s from 0:17 to 2:25.
+- Spot frames of the title, Cupola, Moon and credits.
+- Text check: 132 strings pass.
+
+**Not checked.** The cut was not watched in real time.

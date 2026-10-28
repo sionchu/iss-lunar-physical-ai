@@ -48,6 +48,12 @@ CUTS = {
                one="calm2_main_1g", handoff="calm2_handoff", pushoff="calm2_pushoff", moon="p7_1300_at_moon_eval",
                receipt="Calmer motion", self_collision=True, calm=True, window=True, teaser=True,
                title="Unitree G1, from the ISS to the Moon"),
+    # v6: v5 with the speed ramp driven by on-screen body rotation (<= 90 deg/s, scripts/speed_map.py
+    # --max-screen-deg-s) so arms and body play on one clock; routes shown as highlight windows
+    "v6": dict(clips="showcase_v6", main="calm2_main", jem="slow2_jem", node3="slow2_node3", zero="calm2_main",
+               one="calm2_main_1g", handoff="calm2_handoff", pushoff="calm2_pushoff", moon="p7_1300_at_moon_eval",
+               receipt="Calmer motion", self_collision=True, calm=True, window=True, teaser=True,
+               title="Unitree G1, from the ISS to the Moon", main_parts=("c03a_main", "c03b_main", "c03c_main")),
 }
 
 
@@ -242,12 +248,14 @@ def main():
 
         def first_slow(stem):
             fr = js(V2 / f"{stem}_frames.json")["frames"]
-            k = next(i for i, f in enumerate(fr) if f.get("speed", 99) < 2)
+            k = next((i for i, f in enumerate(fr) if f.get("speed", 99) < 2), 0)
             return k / FPS + 0.6
 
         dpov = frames(V2 / "c10_pov_frames.json") / FPS
-        parts = [("c08_cupola", 0.2, 2.2), ("c03_main", first_slow("c03_main"), 2.0), ("c07_pushoff", 1.5, 1.8),
-                 ("c09_one", 10.5, 1.8), ("c10_walk", 1.0, 1.6), ("c10_pov", dpov - 2.2, 2.2)]
+        m0 = (cut.get("main_parts") or ["c03_main"])[0]
+        d1g = frames(V2 / "c09_one_frames.json") / FPS
+        parts = [("c08_cupola", 0.2, 2.2), (m0, first_slow(m0), 2.0), ("c07_pushoff", 1.5, 1.8),
+                 ("c09_one", d1g - 2.4, 1.8), ("c10_walk", 1.0, 1.6), ("c10_pov", dpov - 2.2, 2.2)]
         for n, (stem, ss, dur) in enumerate(parts):
             spd = at_speed(stem, ss)
             add(f"teaser{n}", [V2 / f"{stem}.mp4"],
@@ -273,7 +281,7 @@ def main():
         for k, stem in enumerate(cut["main_parts"]):
             sc = V2 / f"{stem}_frames.json"
             d = frames(sc) / FPS
-            ov = [label(lbl, 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d),
+            ov = [label(lbl, 0.0, d), *speed_badges(sc, d),
                   *readout("Handholds", steps(sc, sm["total_steps"], d,
                                              sm["completed_steps"] if k == len(cut["main_parts"]) - 1 else None),
                            0.0, d)]
@@ -323,9 +331,7 @@ def main():
         t_catch = next(k for k, f in enumerate(js(sc)["frames"]) if f["t"] >= sh["catch"]["t_s"]) / FPS
         hold = max(0.0, t_catch + 3.0 - d0)            # freeze the last frame so the catch readout holds >= 2.5 s
         d = d0 + hold
-        spd = js(sc)["speed"]
-        clip("handoff", "c06_handoff", d, [label("Tool hand-off", 0.0, d),
-                                           *([badge(f"{spd:g}×", 0.0, d0)] if spd != 1 else []),
+        clip("handoff", "c06_handoff", d, [label("Tool hand-off", 0.0, d), *speed_badges(sc, d0),
                                            caption("Astrobee releases a tool bar. G1 catches it.", 1.0, d),
                                            *readout("Release to catch",
                                                     [(t_catch, d, f"{sh['catch']['t_s'] - sh['release']['t_s']:.1f} s")],
@@ -338,7 +344,7 @@ def main():
         t_rel = next(k for k, f in enumerate(js(sc)["frames"]) if f["t"] >= sp["release_t_s"]) / FPS
         t_cap2 = max(t_rel, 3.0)
         win = mc["window_s"][1] - mc["window_s"][0]
-        clip("pushoff", "c07_pushoff", d, [label("Push-off", 0.0, d), badge(f"{js(sc)['speed']:g}×", 0.0, d),
+        clip("pushoff", "c07_pushoff", d, [label("Push-off", 0.0, d), *speed_badges(sc, d),
                                            caption("G1 pushes off and lets go", 0.5, t_cap2),
                                            caption("Momentum constant from release to first contact", t_cap2, d),
                                            *readout(f"Δp over {win:.2f} s", [(t_rel, d, f"≤ {mc['max_dP_kg_m_s']:g} kg·m/s")],
@@ -379,7 +385,7 @@ def main():
         right = (f"[{{i1}}:v]{src('c09_one')},{half},tpad=stop_mode=clone:stop_duration={d - do + 0.1:.2f},"
                  f"trim=duration={d:.3f},setpts=PTS-STARTPTS,"
                  + ",".join([text(lbl_r, "label", M, M, 0.0, d, box=True),
-                             badge(f"{js(so)['speed']:g}×", 0.0, run),
+                             *speed_badges(so, run),
                              *readout("Handholds", steps(so, s1g["total_steps"], d), 0.0, run),
                              *readout(f"Miss at handhold {s1g['completed_steps'] + 1}", [(do, d, f"{miss:.1f} cm")],
                                       do, d)]) + "[R]")

@@ -296,3 +296,38 @@ The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of th
 - Text check: 132 strings pass.
 
 **Not checked.** The cut was not watched in real time.
+
+## v6 (2026-10-28): playback speed set by on-screen body rotation
+
+**Why.** In v5 the arms looked slow while the body swung round fast. The v5 ramp slowed only around captures; nearly all body rotation happens during moves, which played at 20–24×. On screen the pelvis turned at a median 190 deg/s, with peaks above 4,000 deg/s.
+
+**Fix.**
+- `scripts/speed_map.py --max-screen-deg-s 90 --min-hold 1.5` gives each frame the fastest of 1–20× that keeps the pelvis at or under 90 deg/s on screen (pelvis speed smoothed over 0.5 s). Arms and body now play on one clock.
+- The routes are shown as highlight windows, so the cut stays near three minutes:
+
+| Route | Sim window |
+| --- | --- |
+| Main: start | 0–40 s |
+| Main: panel reach | 198–222 s |
+| Main: finish | 675–715 s |
+| JEM, end | 238–278 s |
+| Node 3, end | 248–288 s |
+| 9.81 m/s² comparison | 92–126.7 s |
+
+- Hand-off and push-off use the same rule (at most 2× and 4×).
+- Teaser, title, Cupola window and Moon are unchanged from v5.
+
+**Measured on screen** (pelvis deg/s from the sidecars, smoothed over 0.5 s):
+
+| Clip | Median | p95 | Max |
+| --- | ---: | ---: | ---: |
+| Main start | 28 | 116 | 131 |
+| Main panel reach | 34 | 143 | 169 |
+| Main finish | 28 | 55 | 70 |
+| JEM | 40 | 62 | 69 |
+| Node 3 | 21 | 64 | 71 |
+| 0 g half of the comparison | 28 | 113 | 141 |
+
+The p95 and max exceed 90 deg/s in some clips. This comes from the 1.5 s minimum hold that keeps the badge readable, and from the 1× floor.
+
+**Output.** `outputs/iss_demos/iss_showcase_v6.mp4` (3:08.9). Text check: 91 strings pass. Not watched in real time.

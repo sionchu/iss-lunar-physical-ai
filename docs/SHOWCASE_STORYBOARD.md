@@ -330,4 +330,6 @@ The cut is about 3 s under the 3:00 target. Shot 10 came out 9.1 s instead of th
 
 The p95 and max exceed 90 deg/s in some clips. This comes from the 1.5 s minimum hold that keeps the badge readable, and from the 1× floor.
 
+**Cupola re-render.** The window looked out on dark ocean for most of the v5 clip. A preview over orbit fraction 0.74–0.90 showed land in the window from 0.78 to 0.86, so the shot is that fraction over 10 s (≈ 47×) with Sun intensity 3500. The Earth model is unchanged.
+
 **Output.** `outputs/iss_demos/iss_showcase_v6.mp4` (3:08.9). Text check: 91 strings pass. Not watched in real time.
